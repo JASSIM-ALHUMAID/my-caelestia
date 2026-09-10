@@ -5,15 +5,19 @@ import Caelestia.Config
 import qs.components
 import qs.services
 import qs.utils
-import qs.modules.launcher.services
 
 Item {
     id: root
 
     required property DesktopEntry modelData
-    required property ScreenState screenState
+    required property DrawerVisibilities visibilities
+    required property bool pinMode
 
-    implicitHeight: Tokens.sizes.launcher.itemHeight
+    // Derived from the token rather than the box we sit in: the row grows to fit the icon
+    // just below, so reading parent.height here would compound the scale on every pass.
+    readonly property int iconSize: Math.round((Tokens.sizes.launcher.itemHeight - Tokens.padding.small * 2) * 0.8 * Tokens.sizes.launcher.iconScale)
+
+    implicitHeight: Math.max(Tokens.sizes.launcher.itemHeight, iconSize + Tokens.padding.small * 2)
 
     anchors.left: parent?.left
     anchors.right: parent?.right
@@ -21,8 +25,12 @@ Item {
     StateLayer {
         radius: Tokens.rounding.large
         onClicked: {
-            Apps.launch(root.modelData);
-            root.screenState.launcher = false;
+            if (root.pinMode) {
+                FavouriteApps.toggleFavourite(root.modelData.id);
+            } else {
+                Apps.launch(root.modelData);
+                root.visibilities.launcher = false;
+            }
         }
     }
 
@@ -37,7 +45,7 @@ Item {
 
             asynchronous: true
             source: Quickshell.iconPath(root.modelData?.icon, "image-missing")
-            implicitSize: parent.height * 0.8
+            implicitSize: root.iconSize
 
             anchors.verticalCenter: parent.verticalCenter
         }
@@ -77,7 +85,7 @@ Item {
             asynchronous: true
             anchors.verticalCenter: parent.verticalCenter
             anchors.right: parent.right
-            active: root.modelData && Strings.testRegexList(GlobalConfig.launcher.favouriteApps, root.modelData.id)
+            active: root.modelData && FavouriteApps.isFavourite(root.modelData.id)
 
             sourceComponent: MaterialIcon {
                 text: "favorite"

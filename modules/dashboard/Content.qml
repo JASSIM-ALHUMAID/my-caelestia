@@ -12,7 +12,8 @@ import qs.components.filedialog
 Item {
     id: root
 
-    required property ScreenState screenState
+    required property DrawerVisibilities visibilities
+    required property DashboardState dashState
     required property FileDialog facePicker
 
     readonly property var dashboardTabs: {
@@ -48,8 +49,29 @@ Item {
     readonly property real nonAnimWidth: view.implicitWidth + viewWrapper.anchors.margins * 2
     readonly property real nonAnimHeight: tabs.implicitHeight + tabs.anchors.topMargin + view.implicitHeight + viewWrapper.anchors.margins * 2
 
+    // When the dashboard is docked at the bottom, mirror the layout vertically so the tabs
+    // sit at the bottom (nearest the screen edge) with the detail view above them.
+    readonly property bool mirrored: Config.dashboard.position === "bottom"
+
     implicitWidth: nonAnimWidth
     implicitHeight: nonAnimHeight
+
+    states: State {
+        name: "mirrored"
+        when: root.mirrored
+
+        AnchorChanges {
+            target: tabs
+            anchors.top: undefined
+            anchors.bottom: tabs.parent.bottom
+        }
+
+        AnchorChanges {
+            target: viewWrapper
+            anchors.top: viewWrapper.parent.top
+            anchors.bottom: tabs.top
+        }
+    }
 
     Tabs {
         id: tabs
@@ -58,11 +80,13 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.topMargin: CUtils.clamp(anchors.margins - Config.border.thickness, 0, anchors.margins)
+        anchors.bottomMargin: Tokens.padding.normal
         anchors.margins: Tokens.padding.large
 
         nonAnimWidth: root.nonAnimWidth - anchors.margins * 2
-        screenState: root.screenState
+        dashState: root.dashState
         tabs: root.dashboardTabs
+        mirrored: root.mirrored
     }
 
     ClippingRectangle {
@@ -80,7 +104,7 @@ Item {
         Flickable {
             id: view
 
-            readonly property int currentIndex: root.screenState.dashboardTab
+            readonly property int currentIndex: root.dashState.currentTab
             readonly property Item currentItem: {
                 repeater.count; // Trigger update on count change
                 return repeater.itemAt(currentIndex);
@@ -103,9 +127,9 @@ Item {
 
                 const x = contentX - currentItem.x;
                 if (x > currentItem.implicitWidth / 2)
-                    root.screenState.dashboardTab = Math.min(root.screenState.dashboardTab + 1, tabs.count - 1);
+                    root.dashState.currentTab = Math.min(root.dashState.currentTab + 1, tabs.count - 1);
                 else if (x < -currentItem.implicitWidth / 2)
-                    root.screenState.dashboardTab = Math.max(root.screenState.dashboardTab - 1, 0);
+                    root.dashState.currentTab = Math.max(root.dashState.currentTab - 1, 0);
             }
 
             onDragEnded: {
@@ -114,9 +138,9 @@ Item {
 
                 const x = contentX - currentItem.x;
                 if (x > currentItem.implicitWidth / 10)
-                    root.screenState.dashboardTab = Math.min(root.screenState.dashboardTab + 1, tabs.count - 1);
+                    root.dashState.currentTab = Math.min(root.dashState.currentTab + 1, tabs.count - 1);
                 else if (x < -currentItem.implicitWidth / 10)
-                    root.screenState.dashboardTab = Math.max(root.screenState.dashboardTab - 1, 0);
+                    root.dashState.currentTab = Math.max(root.dashState.currentTab - 1, 0);
                 else
                     contentX = Qt.binding(() => currentItem?.x ?? 0);
             }
@@ -156,7 +180,8 @@ Item {
                 id: dashComponent
 
                 Dash {
-                    screenState: root.screenState
+                    visibilities: root.visibilities
+                    dashState: root.dashState
                     facePicker: root.facePicker
                 }
             }
@@ -165,7 +190,7 @@ Item {
                 id: mediaComponent
 
                 Media {
-                    screenState: root.screenState
+                    visibilities: root.visibilities
                 }
             }
 

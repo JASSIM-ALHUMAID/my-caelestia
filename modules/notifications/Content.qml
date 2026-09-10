@@ -14,12 +14,37 @@ import qs.modules.utilities as Utilities
 Item {
     id: root
 
-    required property ScreenState screenState
+    required property DrawerVisibilities visibilities
     required property Item osdPanel
     required property Item sessionPanel
     required property Item utilitiesPanel
+    required property int edgeGap
     readonly property int padding: Tokens.padding.large
     readonly property int clampedPadding: CUtils.clamp(padding - Config.border.thickness, 0, padding)
+
+    // The stack hangs from the top corner on the sidebar's side, so only a panel docked to
+    // that same vertical edge sits below it and squeezes it. A top- or bottom-docked panel
+    // never does — and clamping against one, whose y is ~0, would collapse the stack.
+    function squeezedBy(position: string): bool {
+        return position === Config.sidebar.edge;
+    }
+
+    function restartAllTimers(): void {
+        for (const n of Notifs.popups) {
+            if (!n.closed)
+                n.timer.start();
+        }
+    }
+
+    function stopAllTimers(): void {
+        for (const n of Notifs.popups) {
+            if (!n.closed)
+                n.timer.stop();
+        }
+    }
+
+    signal closeGraceRequested
+    signal popoutOpened
 
     anchors.top: parent.top
     anchors.bottom: parent.bottom
@@ -35,25 +60,25 @@ Item {
         for (let i = 0; i < count; i++)
             height += (list.itemAtIndex(i) as NotifWrapper)?.nonAnimHeight ?? 0;
 
-        if (screenState.osd) {
-            const h = osdPanel.y - clampedPadding;
+        if (visibilities.osd && squeezedBy(Config.osd.position)) {
+            const h = Math.max(0, osdPanel.y - edgeGap - clampedPadding);
             if (height > h)
                 height = h;
         }
 
-        if (screenState.session) {
-            const h = sessionPanel.y - clampedPadding;
+        if (visibilities.session && squeezedBy(Config.session.position)) {
+            const h = Math.max(0, sessionPanel.y - edgeGap - clampedPadding);
             if (height > h)
                 height = h;
         }
 
-        if (screenState.utilities) {
-            const h = ((QsWindow.window as QsWindow)?.screen.height ?? 0) - (utilitiesPanel as Utilities.Wrapper).nonAnimHeight - Config.border.thickness * 2 - padding * 2 - Tokens.spacing.extraLarge;
+        if (visibilities.utilities) {
+            const h = Math.max(0, ((QsWindow.window as QsWindow)?.screen.height ?? 0) - edgeGap - (utilitiesPanel as Utilities.Wrapper).nonAnimHeight - Config.border.thickness * 2 - padding * 2 - Tokens.spacing.extraLarge);
             if (height > h)
                 height = h;
         }
 
-        return Math.min(((QsWindow.window as QsWindow)?.screen?.height ?? 0) + padding - clampedPadding * 2 - Config.border.thickness, height + padding + clampedPadding);
+        return Math.min(Math.max(0, ((QsWindow.window as QsWindow)?.screen?.height ?? 0) - edgeGap + padding - clampedPadding * 2 - Config.border.thickness), height + padding + clampedPadding);
     }
 
     ClippingWrapperRectangle {
@@ -61,6 +86,8 @@ Item {
         anchors.margins: root.padding
         anchors.topMargin: root.clampedPadding
         anchors.rightMargin: root.clampedPadding
+        anchors.leftMargin: root.padding
+        anchors.bottomMargin: root.padding
 
         color: "transparent"
         radius: Tokens.rounding.large
@@ -70,6 +97,11 @@ Item {
 
             model: ScriptModel {
                 values: Notifs.popups.filter(n => !n.closed)
+
+                onValuesChanged: {
+                    if (popoutHover.hovered)
+                        Qt.callLater(root.stopAllTimers);
+                }
             }
 
             anchors.fill: parent
@@ -134,6 +166,12 @@ Item {
                 }
             }
         }
+    }
+
+    HoverHandler {
+        id: popoutHover
+
+        onHoveredChanged: hovered ? root.popoutOpened() : root.closeGraceRequested()
     }
 
     Behavior on implicitHeight {

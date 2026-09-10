@@ -12,9 +12,10 @@ StyledRect {
     id: root
 
     required property var props
-    required property ScreenState screenState
+    required property DrawerVisibilities visibilities
     readonly property real nonAnimHeight: btnLayout.implicitHeight + listOrControls.implicitHeight + layout.spacing + layout.anchors.margins * 2
 
+    Layout.fillWidth: true
     implicitHeight: layout.implicitHeight + layout.anchors.margins * 2
 
     radius: Tokens.rounding.large
@@ -170,7 +171,7 @@ StyledRect {
 
         RecordingList {
             props: root.props
-            screenState: root.screenState
+            visibilities: root.visibilities
         }
     }
 

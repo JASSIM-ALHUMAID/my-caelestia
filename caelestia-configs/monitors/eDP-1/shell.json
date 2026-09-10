@@ -1,0 +1,23 @@
+{
+    "session": {
+        "items": [
+            {
+                "enabled": false,
+                "id": "logout",
+                "order": 3
+            },
+            {
+                "id": "reboot",
+                "order": 4
+            },
+            {
+                "id": "shutdown",
+                "order": 5
+            },
+            {
+                "id": "gif",
+                "order": 2
+            }
+        ]
+    }
+}

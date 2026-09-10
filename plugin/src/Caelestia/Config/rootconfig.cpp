@@ -1,6 +1,5 @@
 #include "rootconfig.hpp"
 
-#include <qdatetime.h>
 #include <qdir.h>
 #include <qfile.h>
 #include <qfileinfo.h>
@@ -23,6 +22,35 @@ RootConfig::RootConfig(QObject* parent)
 
 bool RootConfig::recentlySaved() const {
     return m_recentlySaved;
+}
+
+QStringList RootConfig::collectUnknownKeys(const ConfigObject* obj, const QJsonObject& json) {
+    QStringList unknown;
+    const auto* meta = obj->metaObject();
+
+    QSet<QString> known;
+    for (int i = ConfigObject::basePropertyOffset(); i < meta->propertyCount(); ++i)
+        known.insert(QString::fromUtf8(meta->property(i).name()));
+
+    for (auto it = json.begin(); it != json.end(); ++it) {
+        if (!known.contains(it.key())) {
+            unknown.append(it.key());
+        } else if (it.value().isObject()) {
+            int idx = meta->indexOfProperty(it.key().toUtf8().constData());
+            if (idx >= 0) {
+                auto prop = meta->property(idx);
+                auto value = prop.read(obj);
+                auto* subObj = value.value<ConfigObject*>();
+                if (subObj) {
+                    const auto subUnknown = collectUnknownKeys(subObj, it.value().toObject());
+                    for (const auto& subKey : subUnknown)
+                        unknown.append(it.key() + QStringLiteral(".") + subKey);
+                }
+            }
+        }
+    }
+
+    return unknown;
 }
 
 void RootConfig::setupFileBackend(const QString& path, const QString& screen) {
@@ -51,13 +79,12 @@ void RootConfig::setupFileBackend(const QString& path, const QString& screen) {
             return;
         }
 
-        const auto json = toJson().toObject();
+        auto json = toJsonObject();
         file.write(QJsonDocument(json).toJson(QJsonDocument::Indented));
         file.close();
 
         // Update watches — save may have created directories
         updateWatch();
-        m_lastSignature = fileSignature();
 
         emit saved(m_screen);
     });
@@ -83,6 +110,9 @@ void RootConfig::setupFileBackend(const QString& path, const QString& screen) {
 
     updateWatch();
 
+    // Snapshot the built-in values before any file is applied, so resetOption can restore them
+    captureDefaults();
+
     // Load immediately so values are available during construction.
     // Defer signal emissions to next event loop tick so QML has time to connect.
     auto result = reloadFromFile();
@@ -91,24 +121,26 @@ void RootConfig::setupFileBackend(const QString& path, const QString& screen) {
     });
 }
 
-void RootConfig::markLoadFailed() {
-    m_loadFailed = true;
-
-    // A queued save would write memory over a file that could not be read
-    if (m_saveTimer)
-        m_saveTimer->stop();
-}
-
-void RootConfig::connectAutoSave(ConfigNode* node) {
-    connect(node, &ConfigNode::propertiesChanged, this, [this] {
+void RootConfig::connectAutoSave(ConfigObject* obj) {
+    connect(obj, &ConfigObject::propertiesChanged, this, [this] {
         if (!m_loading)
             saveToFile();
     });
 
-    // Recurse into child nodes
-    const auto children = node->childNodes();
-    for (auto* const child : children)
-        connectAutoSave(child);
+    // Recurse into sub-objects and into rosters of config objects (e.g. session.items) —
+    // entries there are mutated in place, so without this a toggle would never trigger a save.
+    const auto* meta = obj->metaObject();
+    for (int i = ConfigObject::basePropertyOffset(); i < meta->propertyCount(); ++i) {
+        auto prop = meta->property(i);
+        auto value = prop.read(obj);
+        auto* subObj = value.value<ConfigObject*>();
+        if (subObj) {
+            connectAutoSave(subObj);
+            continue;
+        }
+        for (auto* const entry : ConfigObject::asConfigObjectList(value))
+            connectAutoSave(entry);
+    }
 }
 
 void RootConfig::updateWatch() {
@@ -145,51 +177,19 @@ void RootConfig::onWatcherEvent() {
     // Re-evaluate what to watch — directories may have been created or deleted
     updateWatch();
 
-    if (m_recentlySaved)
-        return;
-
-    // Only reload when the file actually changed (directory is watched so events fire for unrelated files)
-    if (fileSignature() == m_lastSignature)
-        return;
-
-    m_reloadDebounce->start();
-}
-
-QString RootConfig::fileSignature() const {
-    QFileInfo info(m_filePath);
-    if (!info.exists())
-        return QString();
-
-    return QStringLiteral("%1:%2").arg(info.size()).arg(info.lastModified().toMSecsSinceEpoch());
+    if (!m_recentlySaved)
+        m_reloadDebounce->start();
 }
 
 void RootConfig::saveToFile() {
     if (!m_saveTimer)
         return;
-
-    if (m_loadFailed) {
-        qCWarning(lcConfig) << "Not saving" << m_filePath << "- last load failed";
-
-        // Saves are attempted on every change, so only report the first one
-        if (!m_saveBlockedNotified) {
-            m_saveBlockedNotified = true;
-            emit saveFailed(
-                QStringLiteral("Not overwriting %1 until the last load error is fixed").arg(m_filePath), m_screen);
-        }
-
-        return;
-    }
-
     m_saveTimer->start();
     m_recentlySaved = true;
     m_cooldownTimer->start();
 }
 
 std::optional<QString> RootConfig::reloadFromFile() {
-    m_lastSignature = fileSignature();
-    m_loadFailed = false;
-    m_saveBlockedNotified = false;
-
     QFile file(m_filePath);
 
     if (!file.exists()) {
@@ -198,7 +198,6 @@ std::optional<QString> RootConfig::reloadFromFile() {
     }
 
     if (!file.open(QIODevice::ReadOnly)) {
-        markLoadFailed();
         auto err = QStringLiteral("Failed to open %1: %2").arg(m_filePath, file.errorString());
         qCDebug(lcConfig, "%s", qUtf8Printable(err));
         return err;
@@ -208,8 +207,6 @@ std::optional<QString> RootConfig::reloadFromFile() {
     auto doc = QJsonDocument::fromJson(file.readAll(), &error);
 
     if (error.error != QJsonParseError::NoError) {
-        markLoadFailed();
-
         if (m_retryTimer && m_parseRetries < 3) {
             m_parseRetries++;
             qCDebug(lcConfig, "Failed to parse %s: %s - retrying (%d/3)", qUtf8Printable(m_filePath),
@@ -231,12 +228,13 @@ std::optional<QString> RootConfig::reloadFromFile() {
 
     clearLoadedKeys();
 
-    loadFromJson(doc.object());
+    auto jsonObj = doc.object();
+    loadFromJson(jsonObj);
 
     m_loading = false;
 
     // Collect unknown keys — caller is responsible for emitting signals
-    m_lastUnknownKeys = unknownKeys();
+    m_lastUnknownKeys = collectUnknownKeys(this, jsonObj);
 
     return QString(); // success
 }

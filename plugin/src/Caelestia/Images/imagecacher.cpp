@@ -11,6 +11,8 @@
 #include <qsavefile.h>
 #include <qthreadpool.h>
 
+#include <algorithm>
+
 Q_LOGGING_CATEGORY(lcCacher, "caelestia.images.cacher", QtInfoMsg)
 
 namespace caelestia::images {
@@ -154,6 +156,41 @@ void ImageCacher::runJob(const QString& sourcePath, const QString& cachePath, co
     }
 
     qCDebug(lcCacher).noquote() << "Saved to" << cachePath;
+
+    pruneCache();
+}
+
+void ImageCacher::pruneCache() {
+    const qint64 maxBytes = 500LL * 1024 * 1024; // 500 MB cap
+    const QDir dir(cacheDir());
+    if (!dir.exists())
+        return;
+
+    QFileInfoList files = dir.entryInfoList(QDir::Files | QDir::NoSymLinks);
+    if (files.isEmpty())
+        return;
+
+    qint64 totalSize = 0;
+    for (const QFileInfo& fi : files)
+        totalSize += fi.size();
+
+    if (totalSize <= maxBytes)
+        return;
+
+    // Sort oldest first (by last modified time)
+    std::sort(files.begin(), files.end(), [](const QFileInfo& a, const QFileInfo& b) {
+        return a.lastModified() < b.lastModified();
+    });
+
+    // Delete oldest files until under the cap
+    for (const QFileInfo& fi : files) {
+        if (totalSize <= maxBytes)
+            break;
+        if (QFile::remove(fi.absoluteFilePath())) {
+            totalSize -= fi.size();
+            qCDebug(lcCacher).noquote() << "Pruned cache:" << fi.fileName();
+        }
+    }
 }
 
 } // namespace caelestia::images

@@ -10,7 +10,14 @@ import qs.modules.nexus
 Singleton {
     id: root
 
-    function create(parent: Item, props: var): void {
+    function create(parent, props, initialPageIdx) {
+        if (initialPageIdx === undefined)
+            initialPageIdx = -1;
+        if (initialPageIdx >= 0) {
+            if (!props)
+                props = {};
+            props["initialPageIdx"] = initialPageIdx;
+        }
         nexusComp.createObject(parent ?? dummy, props);
     }
 
@@ -43,12 +50,15 @@ Singleton {
 
             title: qsTr("Nexus — %1").arg(PageRegistry.pages[nexus.nState.currentPageIdx].label)
 
+            property int initialPageIdx: -1
+
             Nexus {
                 id: nexus
 
                 anchors.fill: parent
                 nState.screen: win.screen
                 nState.isWindow: true
+                nState.currentPageIdx: win.initialPageIdx >= 0 ? win.initialPageIdx : nState.currentPageIdx
                 onClose: win.destroy()
             }
 

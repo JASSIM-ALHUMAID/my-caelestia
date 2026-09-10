@@ -10,6 +10,8 @@ PageBase {
     title: qsTr("Tray")
     isSubPage: true
 
+    readonly property string edge: root.nState.selectedEdge
+
     ColumnLayout {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
@@ -17,30 +19,34 @@ PageBase {
         spacing: Tokens.spacing.extraSmall / 2
 
         ToggleRow {
+            Layout.fillWidth: true
             first: true
             text: qsTr("Background")
-            checked: Config.bar.tray.background
-            onToggled: GlobalConfig.bar.tray.background = checked
+            checked: Config.bar[root.edge].tray.background
+            onToggled: GlobalConfig.bar[root.edge].tray.background = checked
         }
 
         ToggleRow {
+            Layout.fillWidth: true
             text: qsTr("Recolour icons")
-            checked: Config.bar.tray.recolour
-            onToggled: GlobalConfig.bar.tray.recolour = checked
+            checked: Config.bar[root.edge].tray.recolour
+            onToggled: GlobalConfig.bar[root.edge].tray.recolour = checked
         }
 
         ToggleRow {
+            Layout.fillWidth: true
             text: qsTr("Compact")
-            checked: Config.bar.tray.compact
-            onToggled: GlobalConfig.bar.tray.compact = checked
+            checked: Config.bar[root.edge].tray.compact
+            onToggled: GlobalConfig.bar[root.edge].tray.compact = checked
         }
 
         ToggleRow {
+            Layout.fillWidth: true
             last: true
             text: qsTr("Popout on hover")
             subtext: qsTr("Show the tray menu popout when hovering")
-            checked: Config.bar.popouts.tray
-            onToggled: GlobalConfig.bar.popouts.tray = checked
+            checked: Config.bar[root.edge].popouts.tray
+            onToggled: GlobalConfig.bar[root.edge].popouts.tray = checked
         }
     }
 }

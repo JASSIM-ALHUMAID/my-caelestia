@@ -13,12 +13,41 @@ Item {
     id: root
 
     required property real nonAnimWidth
-    required property ScreenState screenState
+    required property DashboardState dashState
     required property var tabs
+
+    // When true (dashboard docked at bottom), stack bottom-to-top: tab buttons at the
+    // bottom, indicator and separator above them.
+    property bool mirrored: false
 
     readonly property alias count: bar.count
 
     implicitHeight: bar.implicitHeight + bar.anchors.topMargin + indicator.implicitHeight + indicator.anchors.topMargin + separator.implicitHeight
+
+    states: State {
+        name: "mirrored"
+        when: root.mirrored
+
+        AnchorChanges {
+            target: bar
+            anchors.top: undefined
+            anchors.bottom: bar.parent.bottom
+        }
+        AnchorChanges {
+            target: indicator
+            anchors.top: undefined
+            anchors.bottom: bar.top
+        }
+        PropertyChanges {
+            indicator.anchors.topMargin: 0
+            indicator.anchors.bottomMargin: 5
+        }
+        AnchorChanges {
+            target: separator
+            anchors.top: undefined
+            anchors.bottom: indicator.top
+        }
+    }
 
     TabBar {
         id: bar
@@ -28,8 +57,8 @@ Item {
         anchors.top: parent.top
         anchors.topMargin: Tokens.sizes.dashboard.tabIndicatorSpacing
 
-        currentIndex: root.screenState.dashboardTab
-        onCurrentIndexChanged: root.screenState.dashboardTab = currentIndex
+        currentIndex: root.dashState.currentTab
+        onCurrentIndexChanged: root.dashState.currentTab = currentIndex
 
         implicitHeight: contentHeight
         background: null
@@ -126,9 +155,9 @@ Item {
 
             function onWheel(event: WheelEvent): void {
                 if (event.angleDelta.y < 0)
-                    root.screenState.dashboardTab = Math.min(root.screenState.dashboardTab + 1, bar.count - 1);
+                    root.dashState.currentTab = Math.min(root.dashState.currentTab + 1, bar.count - 1);
                 else if (event.angleDelta.y > 0)
-                    root.screenState.dashboardTab = Math.max(root.screenState.dashboardTab - 1, 0);
+                    root.dashState.currentTab = Math.max(root.dashState.currentTab - 1, 0);
             }
 
             implicitWidth: Math.max(icon.width, label.width)
@@ -137,7 +166,7 @@ Item {
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
 
-            onPressed: root.screenState.dashboardTab = tab.TabBar.index
+            onPressed: root.dashState.currentTab = tab.TabBar.index
 
             StateLayer {
                 id: stateLayer
@@ -150,7 +179,7 @@ Item {
 
                 radius: Tokens.rounding.medium
                 color: tab.current ? Colours.palette.m3primary : Colours.palette.m3onSurface
-                onClicked: root.screenState.dashboardTab = tab.TabBar.index
+                onClicked: root.dashState.currentTab = tab.TabBar.index
             }
 
             MaterialIcon {

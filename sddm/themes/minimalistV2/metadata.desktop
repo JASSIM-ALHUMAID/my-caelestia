@@ -1,0 +1,11 @@
+[SddmGreeterTheme]
+Name=Caelestia SDDM Minimalist V2
+Comment=Minimalist V2 Calestia Shell Login Theme
+Description=Minimalist V2 Calestia Shell Login Theme
+Type=sddm-theme
+Version=1.0
+Author=Haikalllp
+MainScript=Main.qml
+ConfigFile=theme.conf
+Theme-API=2.0
+QtVersion=6

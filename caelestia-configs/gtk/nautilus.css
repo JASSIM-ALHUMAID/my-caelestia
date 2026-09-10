@@ -1,0 +1,238 @@
+/* Nautilus theme */
+
+/* =============================================================================
+   Counterpart to caelestia-cli's thunar.css, so the two file managers read as
+   siblings of the shell. Targets Nautilus 50 / GTK4 / libadwaita 1.9.
+
+   Every rule is scoped under `window.nautilus-window` — the analogue of
+   thunar.css's `.thunar` prefix — so none of it leaks into other GTK4 apps.
+
+   Rendered by ~/.config/caelestia/scripts/gtk-theme.py; placeholders use
+   caelestia's `{{ $<name> }}` convention.
+   ============================================================================= */
+
+/* =============================================================================
+   Window & Background
+   ============================================================================= */
+
+window.nautilus-window,
+window.nautilus-window .background {
+    background: {{ $surface }};
+}
+
+window.nautilus-window headerbar {
+    background: {{ $surfaceContainer }};
+    box-shadow: none;
+    border: none;
+}
+
+window.nautilus-window headerbar:backdrop {
+    background: {{ $surfaceContainer }};
+}
+
+/* =============================================================================
+   Layout Containers
+   ============================================================================= */
+
+/* Separator between the sidebar and the file view */
+window.nautilus-window splitview > separator,
+window.nautilus-window paned > separator {
+    min-width: 1px;
+    background: none;
+    background-image: none;
+    box-shadow: none;
+}
+
+/* Main file view, floated on its own rounded surface tier */
+window.nautilus-window .view,
+window.nautilus-window gridview,
+window.nautilus-window listview,
+window.nautilus-window columnview {
+    background-color: {{ $surfaceContainerLow }};
+    color: {{ $onSurface }};
+    border-radius: 15px;
+    animation: nautilus-fading 400ms ease;
+}
+
+window.nautilus-window scrolledwindow > viewport > widget {
+    margin: 10px 15px 0 0;
+}
+
+/* =============================================================================
+   File View — selection & hover
+   ============================================================================= */
+
+window.nautilus-window gridview > child,
+window.nautilus-window listview > row,
+window.nautilus-window columnview > listview > row {
+    border-radius: 10px;
+    background: none;
+    transition: all ease 300ms;
+}
+
+window.nautilus-window gridview > child:hover,
+window.nautilus-window listview > row:hover,
+window.nautilus-window columnview > listview > row:hover {
+    background: alpha({{ $onSurface }}, 0.1);
+}
+
+window.nautilus-window gridview > child:selected,
+window.nautilus-window listview > row:selected,
+window.nautilus-window columnview > listview > row:selected {
+    background-color: alpha({{ $primary }}, 0.15);
+    color: {{ $primary }};
+}
+
+window.nautilus-window gridview > child:selected label,
+window.nautilus-window listview > row:selected label {
+    color: {{ $primary }};
+}
+
+window.nautilus-window rubberband,
+window.nautilus-window .rubberband {
+    background-color: alpha({{ $primary }}, 0.15);
+    border: 1px solid alpha({{ $primary }}, 0.15);
+}
+
+/* =============================================================================
+   Sidebar Navigation
+   ============================================================================= */
+
+window.nautilus-window .navigation-sidebar {
+    padding: 0 10px;
+    background: none;
+    animation: nautilus-fading 600ms ease;
+}
+
+window.nautilus-window .navigation-sidebar > row {
+    padding: 8px 4px;
+    border-radius: 10px;
+    background: none;
+    transition: all ease 300ms;
+}
+
+window.nautilus-window .navigation-sidebar > row:hover {
+    background: alpha({{ $onSurface }}, 0.1);
+}
+
+window.nautilus-window .navigation-sidebar > row:selected {
+    background: alpha({{ $primary }}, 0.15);
+    color: {{ $primary }};
+}
+
+window.nautilus-window .navigation-sidebar > row:selected label,
+window.nautilus-window .navigation-sidebar > row:selected image {
+    color: {{ $primary }};
+}
+
+/* =============================================================================
+   Path Bar & Location Buttons
+   ============================================================================= */
+
+window.nautilus-window .path-bar,
+window.nautilus-window .path-bar-box {
+    background: none;
+}
+
+window.nautilus-window .path-bar button,
+window.nautilus-window .path-bar-box button {
+    margin: 0;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: none;
+    box-shadow: none;
+    transition: all ease 0.4s;
+}
+
+window.nautilus-window .path-bar button:hover,
+window.nautilus-window .path-bar-box button:hover {
+    background: alpha({{ $primary }}, 0.08);
+    color: alpha({{ $primary }}, 0.8);
+}
+
+window.nautilus-window .path-bar button:checked,
+window.nautilus-window .path-bar button.current-dir,
+window.nautilus-window .path-bar-box button:checked {
+    padding: 8px 20px;
+    background: alpha({{ $primary }}, 0.15);
+    color: {{ $primary }};
+    box-shadow: none;
+}
+
+/* =============================================================================
+   Buttons
+   ============================================================================= */
+
+window.nautilus-window headerbar button {
+    border-radius: 10px;
+    transition: all ease 0.4s;
+}
+
+window.nautilus-window headerbar button:checked,
+window.nautilus-window headerbar button:active {
+    background: alpha({{ $primary }}, 0.15);
+    color: {{ $primary }};
+}
+
+/* =============================================================================
+   Status Bar
+   ============================================================================= */
+
+window.nautilus-window .floating-bar {
+    background-color: {{ $surfaceContainerLow }};
+    color: {{ $onSurface }};
+    border: none;
+    border-radius: 15px;
+    padding: 6px 12px;
+    margin: 10px;
+}
+
+window.nautilus-window .floating-bar button {
+    background: none;
+    border-radius: 10px;
+}
+
+/* =============================================================================
+   Search & Popovers
+   ============================================================================= */
+
+window.nautilus-window entry,
+window.nautilus-window .nautilus-search-entry,
+window.nautilus-window searchbar entry {
+    background-color: {{ $surfaceContainerHigh }};
+    color: {{ $onSurface }};
+    border: none;
+    border-radius: 10px;
+    box-shadow: none;
+}
+
+window.nautilus-window entry:focus-within {
+    box-shadow: inset 0 0 0 1px alpha({{ $primary }}, 0.5);
+}
+
+window.nautilus-window popover > contents,
+window.nautilus-window popover > arrow {
+    background-color: {{ $surfaceContainerHigh }};
+    color: {{ $onSurface }};
+    border: none;
+    border-radius: 15px;
+}
+
+/* =============================================================================
+   Animation
+
+   Deliberately NOT paired with a base `opacity: 0` the way thunar.css does it.
+   Thunar's rule relies on animation-fill-mode leaving the view visible when the
+   animation ends; if the animation never runs, the file view stays invisible.
+   Animating up from 0 in the keyframe instead keeps the resting state opaque.
+   ============================================================================= */
+
+@keyframes nautilus-fading {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}

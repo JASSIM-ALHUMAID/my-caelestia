@@ -30,7 +30,7 @@ Singleton {
     }
 
     function shouldShowPopup(): bool {
-        if (props.dnd || ShellState.anySidebarOpen())
+        if (props.dnd || [...Visibilities.screens.values()].some(v => v.sidebar))
             return false;
         if (GlobalConfig.notifs.fullscreen === "off" && hasFullscreen())
             return false;
@@ -38,6 +38,11 @@ Singleton {
     }
 
     onDndChanged: {
+        if (dnd)
+            Sounds.play(GlobalConfig.utilities.sounds.serviceOn);
+        else
+            Sounds.play(GlobalConfig.utilities.sounds.serviceOff);
+
         if (!GlobalConfig.utilities.toasts.dndChanged)
             return;
 
@@ -58,7 +63,7 @@ Singleton {
         interval: 1000
         onTriggered: storage.setText(JSON.stringify(root.notClosed.map(n => ({
                     time: n.time,
-                    id: n.id,
+                    notificationId: n.notificationId,
                     summary: n.summary,
                     body: n.body,
                     appIcon: n.appIcon,
@@ -107,26 +112,39 @@ Singleton {
 
         printErrors: false
         path: `${Paths.state}/notifs.json`
+
+        // `loaded` gates saving, so it has to end up true on every path out of here. A throw
+        // from JSON.parse used to skip it and silently disable persistence for the rest of the
+        // session -- with printErrors off, the only symptom was notifications not surviving a
+        // restart. A corrupt store is discarded rather than kept: it is a cache of dismissed
+        // popups, so starting empty costs less than never saving again.
         onLoaded: {
-            const data = JSON.parse(text());
-            for (const notif of data) {
-                const properties = Object.assign({}, notif);
-
-                // Backwards compatibility for old notifications
-                if (properties.notificationId === undefined && properties.id !== undefined)
-                    properties.notificationId = properties.id;
-
-                delete properties.id;
-                root.list.push(notifComp.createObject(root, properties));
+            try {
+                for (const notif of JSON.parse(text())) {
+                    // Stores written before upstream renamed NotifData.id -> notificationId
+                    // (to satisfy qmlformat) still carry an `id` key. Passing it through as an
+                    // initial property warns once per entry on every startup, and the store is
+                    // only rewritten when the list next changes -- so migrate it here instead.
+                    if ("id" in notif) {
+                        notif.notificationId = notif.id;
+                        delete notif.id;
+                    }
+                    root.list.push(notifComp.createObject(root, notif));
+                }
+                root.list.sort((a, b) => b.time - a.time);
+            } catch (e) {
+                console.warn("Notifs: discarding unreadable notification store:", e);
+                root.list = [];
+                Qt.callLater(() => storage.setText("[]"));
             }
-            root.list.sort((a, b) => b.time - a.time);
             root.loaded = true;
         }
         onLoadFailed: err => {
-            if (err === FileViewError.FileNotFound) {
-                root.loaded = true;
-                Qt.callLater(() => setText("[]"));
-            }
+            if (err === FileViewError.FileNotFound)
+                Qt.callLater(() => storage.setText("[]"));
+            else
+                console.warn("Notifs: could not read notification store, starting empty:", err);
+            root.loaded = true;
         }
     }
 

@@ -86,7 +86,7 @@ StyledRect {
 
             MaterialIcon {
                 Layout.topMargin: Math.round(fontInfo.pointSize * 0.08)
-                text: root.temperature > 90 ? "thermometer_alert" : "thermometer"
+                text: root.temperature > 90 ? "local_fire_department" : "thermometer"
                 color: root.temperature > 90 ? Colours.palette.m3error : root.accent
                 fontStyle: Tokens.font.icon.medium
                 fill: 1

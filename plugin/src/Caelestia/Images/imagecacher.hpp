@@ -30,6 +30,7 @@ private:
     explicit ImageCacher(QObject* parent = nullptr);
 
     static void runJob(const QString& sourcePath, const QString& cachePath, const QSize& size, FillMode fillMode);
+    static void pruneCache();
 
     QMutex m_mutex;
     QSet<QString> m_inflight;

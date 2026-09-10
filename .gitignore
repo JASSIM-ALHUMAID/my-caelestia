@@ -4,3 +4,25 @@
 build/
 .cache/
 logs
+/AGENTS.md
+docs/
+caelestia-configs/monitors/HEADLESS-*/
+caelestia-configs/monitors/WAYLAND-*/
+
+# agent/dev tooling
+.claude/
+.agents/
+.opencode/
+.ai/
+.codex/
+.superpowers/
+skills-lock.json
+tokscale-export-*.json
+AGENTS.md
+
+# grub: generator intermediates and generated output (see grub/src/generate.py)
+grub/theme/sharp.png
+grub/theme/blur.png
+grub/theme/composite_bg.png
+grub/theme/preview.png
+grub/src/theme_config.js

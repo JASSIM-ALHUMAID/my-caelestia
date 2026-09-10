@@ -4,29 +4,80 @@ import QtQml
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Mpris
+import Quickshell.Services.Pipewire
 import Caelestia
 import Caelestia.Config
 import qs.components.misc
+import qs.services
 
 Singleton {
     id: root
 
-    readonly property list<MprisPlayer> list: Mpris.players.values
-    readonly property MprisPlayer active: props.manualActive ?? list.find(p => getIdentity(p) === GlobalConfig.services.defaultPlayer) ?? list[0] ?? null
+    // Streams we never want to surface as players - system noise and audio plumbing
+    readonly property list<string> ignoredStreams: ["easyeffects", "speech-dispatcher", "libcanberra", "quickshell", "cava"]
+
+    readonly property list<MprisPlayer> mprisList: Mpris.players.values
+    readonly property list<QtObject> streamList: streamPlayers.instances
+
+    // Real MPRIS players always win the auto pick; a stream is only ever chosen when
+    // there is no MPRIS player at all (otherwise the media tab would show "nothing
+    // playing" and hide the very switcher needed to select the stream)
+    readonly property list<QtObject> list: [...mprisList, ...streamList]
+    readonly property QtObject active: props.manualActive ?? mprisList.find(p => getIdentity(p) === GlobalConfig.services.defaultPlayer) ?? mprisList[0] ?? streamList[0] ?? null
     property alias manualActive: props.manualActive
 
-    // Dedup key for progressive metadata (e.g. mpv-mpris/yt-dlp player fills title then artist later).
-    property string lastNowPlayingKey: ""
+    // PipeWire streams belonging to apps that have no MPRIS player of their own
+    readonly property list<PwNode> orphanStreams: {
+        const claimed = [];
+        for (const p of mprisList) {
+            if (p.identity)
+                claimed.push(p.identity.toLowerCase());
+            if (p.desktopEntry)
+                claimed.push(p.desktopEntry.toLowerCase());
+        }
 
-    function getIdentity(player: MprisPlayer): string {
+        const byApp = new Map();
+        for (const node of Audio.streams) {
+            // isSink excludes capture streams (our own cava recorder lands there)
+            if (!node?.audio || !node.isSink)
+                continue;
+
+            const props = node.properties ?? {};
+            const role = props["media.role"] ?? "";
+            if (role === "event" || role === "notification")
+                continue;
+
+            const app = (props["application.name"] || node.description || node.name || "").toLowerCase();
+            const binary = (props["application.process.binary"] || "").toLowerCase();
+            if (!app && !binary)
+                continue;
+
+            if (ignoredStreams.some(i => app.includes(i) || binary.includes(i)))
+                continue;
+            if (claimed.some(id => id === app || id === binary || app.includes(id) || id.includes(app)))
+                continue;
+
+            const key = app || binary;
+            // An app can spawn several streams (Harbor has one per helper process);
+            // prefer the one whose binary matches the app over a helper like WebKitWebProcess
+            if (byApp.has(key) && !(!binary || binary === app))
+                continue;
+            byApp.set(key, node);
+        }
+        return [...byApp.values()];
+    }
+
+    function getIdentity(player: QtObject): string {
         if (!player)
             return "";
         const alias = GlobalConfig.services.playerAliases.find(a => a.from === player.identity);
         return alias?.to ?? player.identity;
     }
 
-    function getArtUrl(player: MprisPlayer): string {
+    function getArtUrl(player: QtObject): string {
         if (!player)
+            return "";
+        if (player.isStreamPlayer)
             return "";
         if (player.trackArtUrl)
             return player.trackArtUrl;
@@ -40,52 +91,47 @@ Singleton {
         return "";
     }
 
-    // Quickshell only emits postTrackChanged when trackid/url/title change, so late
-    // artist updates (common with mpv-mpris + yt-dlp player) never retrigger it. Watch
-    // title/artist too and toast once both are usable.
-    function maybeToastNowPlaying(): void {
-        if (!GlobalConfig.utilities.toasts.nowPlaying)
-            return;
+    Connections {
+        function onPostTrackChanged() {
+            if (!GlobalConfig.utilities.toasts.nowPlaying) {
+                return;
+            }
+            if (root.active.trackArtist != "" && root.active.trackTitle != "") {
+                Toaster.toast(qsTr("Now Playing"), qsTr("%1 - %2").arg(root.active.trackArtist).arg(root.active.trackTitle), "music_note");
+            }
+        }
 
-        const player = root.active;
-        if (!player)
-            return;
-
-        const title = player.trackTitle ?? "";
-        const artist = player.trackArtist ?? "";
-        if (!title || !artist)
-            return;
-
-        const key = `${getIdentity(player)}\0${player.uniqueId}\0${title}\0${artist}`;
-        if (key === lastNowPlayingKey)
-            return;
-
-        lastNowPlayingKey = key;
-        Toaster.toast(qsTr("Now Playing"), qsTr("%1 - %2").arg(artist).arg(title), "music_note");
+        // Stream players have no track signals to connect to
+        target: root.active?.isStreamPlayer ? null : root.active
     }
 
-    onActiveChanged: lastNowPlayingKey = ""
+    Variants {
+        id: streamPlayers
 
+        model: root.orphanStreams
+
+        StreamPlayer {
+            required property PwNode modelData
+
+            node: modelData
+        }
+    }
+
+    // A manually picked stream dies with its app - don't strand the UI on a dead adapter
     Connections {
-        function onPostTrackChanged(): void {
-            root.maybeToastNowPlaying();
+        function onListChanged(): void {
+            const manual = props.manualActive;
+            if (manual && !root.list.includes(manual))
+                props.manualActive = null;
         }
 
-        function onTrackTitleChanged(): void {
-            root.maybeToastNowPlaying();
-        }
-
-        function onTrackArtistChanged(): void {
-            root.maybeToastNowPlaying();
-        }
-
-        target: root.active
+        target: root
     }
 
     PersistentProperties {
         id: props
 
-        property MprisPlayer manualActive
+        property QtObject manualActive
 
         reloadableId: "players"
     }

@@ -23,4 +23,19 @@ Singleton {
         }
         return false;
     }
+
+    // An anchored regex matching exactly `id`, for storing in a filter list such as
+    // launcher.favouriteApps. Metacharacters are escaped so ids like org.gnome.Nautilus
+    // don't turn their dots into wildcards.
+    function exactPattern(id: string): string {
+        return `^${id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`;
+    }
+
+    // Index of the first filter in `filterList` matching `target`, or -1.
+    function findRegexList(filterList: list<string>, target: string): int {
+        for (let i = 0; i < filterList.length; i++)
+            if (testRegexList([filterList[i]], target))
+                return i;
+        return -1;
+    }
 }

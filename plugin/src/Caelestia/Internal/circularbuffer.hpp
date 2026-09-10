@@ -26,6 +26,9 @@ public:
     [[nodiscard]] qreal maximum() const;
 
     Q_INVOKABLE void push(qreal value);
+    // Bulk replace, emitting once. push() signals per value, which is right for streaming
+    // but costly when a consumer rebuilds the whole buffer from a derived source.
+    Q_INVOKABLE void setValues(const QList<qreal>& values);
     Q_INVOKABLE void clear();
     Q_INVOKABLE [[nodiscard]] qreal at(int index) const;
 

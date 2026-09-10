@@ -6,7 +6,7 @@ import qs.services
 Item {
     id: root
 
-    required property ScreenState screenState
+    required property DrawerVisibilities visibilities
 
     implicitWidth: icon.implicitHeight + Tokens.padding.small
     implicitHeight: icon.implicitHeight
@@ -18,13 +18,14 @@ Item {
         implicitWidth: implicitHeight
         implicitHeight: icon.implicitHeight + Tokens.padding.small
         radius: Tokens.rounding.full
-        onClicked: root.screenState.session = !root.screenState.session
+        onClicked: root.visibilities.session = !root.visibilities.session
     }
 
     MaterialIcon {
         id: icon
 
         anchors.centerIn: parent
+        anchors.horizontalCenterOffset: -1
 
         text: "power_settings_new"
         color: Colours.palette.m3error

@@ -1,0 +1,300 @@
+{
+  "categories": [
+    {
+      "name": "Apps",
+      "bindings": [
+        {
+          "desc": "Browser",
+          "modifiers": [
+            "SUPER"
+          ],
+          "key": "B",
+          "actionId": "exec",
+          "argument": "brave-browser-nightly"
+        },
+        {
+          "desc": "Terminal (WezTerm)",
+          "modifiers": [
+            "SUPER"
+          ],
+          "key": "Return",
+          "actionId": "exec",
+          "argument": "wezterm-gui"
+        },
+        {
+          "desc": "Bluetooth manager",
+          "modifiers": [
+            "CTRL",
+            "ALT"
+          ],
+          "key": "B",
+          "actionId": "exec",
+          "argument": "blueman-manager"
+        },
+        {
+          "desc": "Reload shell",
+          "modifiers": [
+            "SUPER",
+            "SHIFT"
+          ],
+          "key": "R",
+          "actionId": "exec",
+          "argument": "qs --path ~/Projects/shell/real/shell.qml"
+        },
+        {
+          "desc": "Terminal (Kitty)",
+          "modifiers": [
+            "SUPER",
+            "ALT"
+          ],
+          "key": "K",
+          "actionId": "exec",
+          "argument": "kitty"
+        }
+      ]
+    },
+    {
+      "name": "Wallpaper",
+      "bindings": [
+        {
+          "desc": "Random wallpaper",
+          "modifiers": [
+            "SUPER",
+            "SHIFT"
+          ],
+          "key": "W",
+          "actionId": "exec",
+          "argument": "caelestia shell wallpaper random"
+        }
+      ]
+    },
+    {
+      "name": "Shell",
+      "bindings": [
+        {
+          "desc": "Shell switcher (picker)",
+          "modifiers": [
+            "SUPER",
+            "SHIFT"
+          ],
+          "key": "O",
+          "actionId": "exec",
+          "argument": "~/.config/dcli/scripts/switch-shell.sh"
+        }
+      ]
+    },
+    {
+      "name": "Scrolling layout",
+      "bindings": [
+        {
+          "desc": "Move column right",
+          "modifiers": [
+            "SUPER",
+            "ALT"
+          ],
+          "key": "period",
+          "actionId": "scrolling.moveColRight",
+          "argument": ""
+        },
+        {
+          "desc": "Move column left",
+          "modifiers": [
+            "SUPER",
+            "ALT"
+          ],
+          "key": "comma",
+          "actionId": "scrolling.moveColLeft",
+          "argument": ""
+        },
+        {
+          "desc": "Increase column width",
+          "modifiers": [
+            "SUPER",
+            "SHIFT"
+          ],
+          "key": "period",
+          "actionId": "scrolling.colResizeIn",
+          "argument": ""
+        },
+        {
+          "desc": "Decrease column width",
+          "modifiers": [
+            "SUPER",
+            "SHIFT"
+          ],
+          "key": "comma",
+          "actionId": "scrolling.colResizeOut",
+          "argument": ""
+        }
+      ]
+    },
+    {
+      "name": "Workspaces",
+      "bindings": [
+        {
+          "desc": "Next workspace",
+          "modifiers": [
+            "SUPER"
+          ],
+          "key": "Tab",
+          "actionId": "workspace.next",
+          "argument": ""
+        },
+        {
+          "desc": "Previous workspace",
+          "modifiers": [
+            "SUPER",
+            "SHIFT"
+          ],
+          "key": "Tab",
+          "actionId": "workspace.prev",
+          "argument": ""
+        },
+        {
+          "desc": "Previous Focued Workspace",
+          "modifiers": [
+            "SUPER",
+            "CTRL"
+          ],
+          "key": "D",
+          "actionId": "exec",
+          "argument": "hyprctl dispatch 'hl.dsp.focus({ workspace = \"previous\" })'"
+        }
+      ]
+    },
+    {
+      "name": "Controls",
+      "bindings": [
+        {
+          "desc": "Toggle game mode",
+          "modifiers": [
+            "SUPER",
+            "ALT"
+          ],
+          "key": "G",
+          "actionId": "exec",
+          "argument": "caelestia shell gameMode toggle"
+        },
+        {
+          "desc": "Toggle dashboard",
+          "modifiers": [
+            "SUPER",
+            "ALT"
+          ],
+          "key": "D",
+          "actionId": "exec",
+          "argument": "caelestia shell drawers toggle dashboard"
+        },
+        {
+          "desc": "Toggle dock",
+          "modifiers": [
+            "SUPER",
+            "ALT"
+          ],
+          "key": "A",
+          "actionId": "exec",
+          "argument": "caelestia shell drawers toggle dock"
+        },
+        {
+          "desc": "Toggle taskbar",
+          "modifiers": [
+            "SUPER",
+            "SHIFT"
+          ],
+          "key": "A",
+          "actionId": "exec",
+          "argument": "caelestia shell drawers toggle bar"
+        },
+        {
+          "desc": "Open settings",
+          "modifiers": [
+            "SUPER"
+          ],
+          "key": "I",
+          "actionId": "exec",
+          "argument": "caelestia shell nexus open"
+        },
+        {
+          "desc": "Toggle system monitor",
+          "modifiers": [
+            "SUPER",
+            "SHIFT"
+          ],
+          "key": "Return",
+          "actionId": "exec",
+          "argument": "caelestia toggle sysmon"
+        },
+        {
+          "desc": "Clipboard history",
+          "modifiers": [
+            "SUPER"
+          ],
+          "key": "V",
+          "actionId": "global",
+          "argument": "caelestia:clipboard"
+        },
+        {
+          "desc": "Emoji picker",
+          "modifiers": [
+            "SUPER"
+          ],
+          "key": "period",
+          "actionId": "global",
+          "argument": "caelestia:emoji"
+        },
+        {
+          "desc": "Clear clipboard",
+          "modifiers": [
+            "SUPER"
+          ],
+          "key": "BackSpace",
+          "actionId": "global",
+          "argument": "caelestia:clearClipboard"
+        }
+      ]
+    },
+    {
+      "name": "Video wallpaper",
+      "bindings": [
+        {
+          "desc": "Seek video wallpaper forward",
+          "modifiers": [
+            "CTRL",
+            "ALT"
+          ],
+          "key": "Right",
+          "actionId": "exec",
+          "argument": "caelestia shell wallpaper seekForward"
+        },
+        {
+          "desc": "Seek video wallpaper backward",
+          "modifiers": [
+            "CTRL",
+            "ALT"
+          ],
+          "key": "Left",
+          "actionId": "exec",
+          "argument": "caelestia shell wallpaper seekBackward"
+        }
+      ]
+    },
+    {
+      "name": "Awww wallpaper",
+      "bindings": []
+    },
+    {
+      "name": "Hyprsunset",
+      "bindings": [
+        {
+          "desc": "Toggle blue light filter",
+          "modifiers": [
+            "SUPER"
+          ],
+          "key": "backslash",
+          "actionId": "exec",
+          "argument": "caelestia shell hyprSunset toggle"
+        }
+      ]
+    }
+  ]
+}

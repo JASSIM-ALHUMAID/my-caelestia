@@ -5,18 +5,15 @@ import Quickshell.Bluetooth
 QtObject {
     property ShellScreen screen
     property bool isWindow
-    property bool animatingContainer
     property int currentPageIdx
     property list<int> subPageIdxStack
     property bool searchOpen
 
-    property string selectedWallpaperCategory
     property BluetoothDevice selectedBtDevice
-    property DesktopEntry selectedApp
-    property int editingVpnIndex: -1
-    property string selectedNetworkSsid
-    property string selectedEthernetInterface
-    property bool networkDetailsFromSaved
+    property string selectedEdge: "left"
+    property string selectedCurve: "standard"
+    property int kbEditCat: -1
+    property int kbEditBind: -1
 
     signal close
     signal subPageOpened(idx: int)

@@ -3,178 +3,338 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Bluetooth
+import Quickshell.Services.UPower
 import Caelestia.Config
 import qs.components
 import qs.services
 import qs.utils
-import qs.modules.bar.components.status
 
 StyledRect {
     id: root
 
+    required property var barConfig
+    required property bool vertical
     property color colour: Colours.palette.m3secondary
     readonly property alias items: iconColumn
 
-    readonly property int spacing: Tokens.spacing.medium / 2
-
-    // Index of the first/last entry that isn't collapsed, for edge margin gating
-    readonly property int firstPresent: {
-        const values = model.values;
-        for (let i = 0; i < values.length; i++)
-            if (!collapsed(values[i]))
-                return i;
-        return -1;
-    }
-    readonly property int lastPresent: {
-        const values = model.values;
-        for (let i = values.length - 1; i >= 0; i--)
-            if (!collapsed(values[i]))
-                return i;
-        return -1;
-    }
-
-    // Entries that can shrink to nothing, spacing included
-    function collapsed(entry: var): bool {
-        if (entry.id === "lockStatus")
-            return !Hypr.capsLock && !Hypr.numLock;
-        return false;
-    }
+    // Main-axis slack reclaimed when the lock-status slot is shown but empty.
+    readonly property real lockGap: root.barConfig.status.showLockStatus && !Hypr.capsLock && !Hypr.numLock ? iconColumn.spacing : 0
 
     color: Colours.tPalette.m3surfaceContainer
     radius: Tokens.rounding.full
 
     clip: true
-    implicitWidth: Tokens.sizes.bar.innerWidth
-    implicitHeight: iconColumn.implicitHeight + Tokens.padding.medium * 2
+    implicitWidth: root.vertical ? Tokens.sizes.bar.innerWidth : iconColumn.implicitWidth + Tokens.padding.medium * 2 - lockGap
+    implicitHeight: root.vertical ? iconColumn.implicitHeight + Tokens.padding.medium * 2 - lockGap : Tokens.sizes.bar.innerWidth
 
-    ColumnLayout {
+    GridLayout {
         id: iconColumn
 
-        anchors.left: parent.left
+        flow: root.vertical ? GridLayout.TopToBottom : GridLayout.LeftToRight
+        columns: root.vertical ? 1 : -1
+        rows: root.vertical ? -1 : 1
+
+        anchors.left: root.vertical ? parent.left : undefined
         anchors.right: parent.right
+        anchors.top: root.vertical ? undefined : parent.top
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: Tokens.padding.medium
+        anchors.bottomMargin: root.vertical ? Tokens.padding.medium : 0
+        anchors.rightMargin: root.vertical ? 0 : Tokens.padding.medium
 
-        spacing: 0
+        rowSpacing: Tokens.spacing.medium / 2
+        columnSpacing: Tokens.spacing.medium / 2
 
-        Repeater {
-            model: ScriptModel {
-                id: model
+        readonly property int spacing: Tokens.spacing.medium / 2
 
-                values: root.Config.bar.statusIcons.values.filter(e => e.enabled)
+        // Lock keys status
+        WrappedLoader {
+            name: "lockstatus"
+            active: root.barConfig.status.showLockStatus
+
+            // Collapses along the bar's main axis, so an enabled-but-idle lock slot costs
+            // nothing but the layout spacing `lockGap` above already subtracts.
+            sourceComponent: GridLayout {
+                flow: root.vertical ? GridLayout.TopToBottom : GridLayout.LeftToRight
+                columns: root.vertical ? 1 : -1
+                rows: root.vertical ? -1 : 1
+                rowSpacing: 0
+                columnSpacing: 0
+
+                Item {
+                    implicitWidth: root.vertical ? capslockIcon.implicitWidth : Hypr.capsLock ? capslockIcon.implicitWidth : 0
+                    implicitHeight: root.vertical ? Hypr.capsLock ? capslockIcon.implicitHeight : 0 : capslockIcon.implicitHeight
+
+                    MaterialIcon {
+                        id: capslockIcon
+
+                        anchors.centerIn: parent
+
+                        scale: Hypr.capsLock ? 1 : 0.5
+                        opacity: Hypr.capsLock ? 1 : 0
+
+                        text: "keyboard_capslock_badge"
+                        color: root.colour
+
+                        Behavior on opacity {
+                            Anim {
+                                type: Anim.DefaultEffects
+                            }
+                        }
+
+                        Behavior on scale {
+                            Anim {}
+                        }
+                    }
+
+                    Behavior on implicitWidth {
+                        Anim {}
+                    }
+
+                    Behavior on implicitHeight {
+                        Anim {}
+                    }
+                }
+
+                Item {
+                    readonly property int gap: Hypr.capsLock && Hypr.numLock ? iconColumn.spacing : 0
+
+                    Layout.topMargin: root.vertical ? gap : 0
+                    Layout.leftMargin: root.vertical ? 0 : gap
+
+                    implicitWidth: root.vertical ? numlockIcon.implicitWidth : Hypr.numLock ? numlockIcon.implicitWidth : 0
+                    implicitHeight: root.vertical ? Hypr.numLock ? numlockIcon.implicitHeight : 0 : numlockIcon.implicitHeight
+
+                    MaterialIcon {
+                        id: numlockIcon
+
+                        anchors.centerIn: parent
+
+                        scale: Hypr.numLock ? 1 : 0.5
+                        opacity: Hypr.numLock ? 1 : 0
+
+                        text: "looks_one"
+                        color: root.colour
+
+                        Behavior on opacity {
+                            Anim {
+                                type: Anim.DefaultEffects
+                            }
+                        }
+
+                        Behavior on scale {
+                            Anim {}
+                        }
+                    }
+
+                    Behavior on implicitWidth {
+                        Anim {}
+                    }
+
+                    Behavior on implicitHeight {
+                        Anim {}
+                    }
+                }
+            }
+        }
+
+        // Audio icon
+        WrappedLoader {
+            name: "audio"
+            active: root.barConfig.status.showAudio
+
+            sourceComponent: MaterialIcon {
+                animate: true
+                text: Icons.getVolumeIcon(Audio.volume, Audio.muted)
+                color: root.colour
+            }
+        }
+
+        // Microphone icon
+        WrappedLoader {
+            name: "audio"
+            active: root.barConfig.status.showMicrophone
+
+            sourceComponent: MaterialIcon {
+                animate: true
+                text: Icons.getMicVolumeIcon(Audio.sourceVolume, Audio.sourceMuted)
+                color: root.colour
+            }
+        }
+
+        // Keyboard layout icon
+        WrappedLoader {
+            name: "kblayout"
+            active: root.barConfig.status.showKbLayout
+
+            sourceComponent: StyledText {
+                animate: true
+                text: Hypr.kbLayout
+                color: root.colour
+                font: Tokens.font.mono.medium
+            }
+        }
+
+        // Network icon
+        WrappedLoader {
+            name: "network"
+            active: root.barConfig.status.showNetwork && (!Nmcli.activeEthernet || root.barConfig.status.showWifi)
+
+            sourceComponent: MaterialIcon {
+                animate: true
+                text: Nmcli.active ? Icons.getNetworkIcon(Nmcli.active.strength ?? 0) : "wifi_off"
+                color: root.colour
+            }
+        }
+
+        // Ethernet icon
+        WrappedLoader {
+            name: "ethernet"
+            active: root.barConfig.status.showNetwork && Nmcli.activeEthernet
+
+            sourceComponent: MaterialIcon {
+                animate: true
+                text: "cable"
+                color: root.colour
+            }
+        }
+
+        // Bluetooth section
+        WrappedLoader {
+            Layout.preferredHeight: root.vertical ? implicitHeight : -1
+            Layout.preferredWidth: root.vertical ? -1 : implicitWidth
+
+            name: "bluetooth"
+            active: root.barConfig.status.showBluetooth
+
+            // Connected devices extend along the bar, not across its thickness.
+            sourceComponent: GridLayout {
+                flow: root.vertical ? GridLayout.TopToBottom : GridLayout.LeftToRight
+                columns: root.vertical ? 1 : -1
+                rows: root.vertical ? -1 : 1
+                rowSpacing: Tokens.spacing.medium / 2
+                columnSpacing: Tokens.spacing.medium / 2
+
+                // Bluetooth icon
+                MaterialIcon {
+                    animate: true
+                    text: {
+                        if (!Bluetooth.defaultAdapter?.enabled) // qmllint disable unresolved-type
+                            return "bluetooth_disabled";
+                        if (Bluetooth.devices.values.some(d => d.connected)) // qmllint disable unresolved-type
+                            return "bluetooth_connected";
+                        return "bluetooth";
+                    }
+                    color: root.colour
+                }
+
+                // Connected bluetooth devices
+                Repeater {
+                    model: ScriptModel {
+                        values: Bluetooth.devices.values.filter(d => d.state !== BluetoothDeviceState.Disconnected) // qmllint disable unresolved-type
+                    }
+
+                    MaterialIcon {
+                        id: device
+
+                        required property BluetoothDevice modelData
+
+                        animate: true
+                        text: Icons.getBluetoothIcon(modelData?.icon)
+                        color: root.colour
+                        fill: 1
+
+                        SequentialAnimation on opacity {
+                            running: device.modelData?.state !== BluetoothDeviceState.Connected // qmllint disable unresolved-type
+                            alwaysRunToEnd: true
+                            loops: Animation.Infinite
+
+                            Anim {
+                                from: 1
+                                to: 0
+                                duration: Tokens.anim.durations.large
+                                easing: Tokens.anim.standardAccel
+                            }
+                            Anim {
+                                from: 0
+                                to: 1
+                                duration: Tokens.anim.durations.large
+                                easing: Tokens.anim.standardDecel
+                            }
+                        }
+                    }
+                }
             }
 
-            DelegateChooser {
-                role: "id"
+            Behavior on Layout.preferredHeight {
+                Anim {}
+            }
 
-                DelegateChoice {
-                    roleValue: "lockStatus"
-                    delegate: EntryWrapper {
-                        LockStatus {
-                            colour: root.colour
-                            parentSpacing: root.spacing
-                        }
-                    }
-                }
-                DelegateChoice {
-                    roleValue: "audio"
-                    delegate: EntryWrapper {
-                        margin: Tokens.spacing.extraSmall / 2
+            Behavior on Layout.preferredWidth {
+                Anim {}
+            }
+        }
 
-                        MaterialIcon {
-                            animate: true
-                            text: Icons.getVolumeIcon(Audio.volume, Audio.muted)
-                            color: root.colour
-                            fontStyle: Tokens.font.icon.medium
-                            fill: 1
-                        }
-                    }
-                }
-                DelegateChoice {
-                    roleValue: "microphone"
-                    delegate: EntryWrapper {
-                        margin: Tokens.spacing.extraSmall / 2
-                        name: "audio" // Mic opens audio popout
+        // Battery section
+        WrappedLoader {
+            name: "battery"
+            active: root.barConfig.status.showBattery
 
-                        MaterialIcon {
-                            animate: true
-                            text: Icons.getMicVolumeIcon(Audio.sourceVolume, Audio.sourceMuted)
-                            color: root.colour
-                            fontStyle: Tokens.font.icon.medium
-                            fill: 1
+            // The percentage sits beside the icon on a top/bottom bar; stacking it under
+            // the icon would overflow the bar's thickness and get clipped.
+            sourceComponent: GridLayout {
+                flow: root.vertical ? GridLayout.TopToBottom : GridLayout.LeftToRight
+                columns: root.vertical ? 1 : -1
+                rows: root.vertical ? -1 : 1
+                rowSpacing: 0
+                columnSpacing: root.vertical ? 0 : Tokens.spacing.extraSmall / 2
+
+                readonly property bool isLaptop: UPower.displayDevice.isLaptopBattery
+
+                readonly property color batteryColour: !UPower.onBattery || UPower.displayDevice.percentage > 0.2 ? root.colour : Colours.palette.m3error
+
+                MaterialIcon {
+                    Layout.alignment: root.vertical ? Qt.AlignHCenter : Qt.AlignVCenter
+                    animate: true
+                    text: {
+                        if (!UPower.displayDevice.isLaptopBattery) {
+                            if (PowerProfiles.profile === PowerProfile.PowerSaver)
+                                return "energy_savings_leaf";
+                            if (PowerProfiles.profile === PowerProfile.Performance)
+                                return "rocket_launch";
+                            return "balance";
                         }
+
+                        const perc = UPower.displayDevice.percentage;
+                        const charging = [UPowerDeviceState.Charging, UPowerDeviceState.FullyCharged, UPowerDeviceState.PendingCharge].includes(UPower.displayDevice.state);
+                        if (perc === 1)
+                            return charging ? "battery_charging_full" : "battery_full";
+                        let level = Math.floor(perc * 7);
+                        if (charging && (level === 4 || level === 1))
+                            level--;
+                        return charging ? `battery_charging_${(level + 3) * 10}` : `battery_${level}_bar`;
                     }
+                    color: parent.batteryColour
+                    fill: 1
                 }
-                DelegateChoice {
-                    roleValue: "kbLayout"
-                    delegate: EntryWrapper {
-                        StyledText {
-                            animate: true
-                            text: Hypr.kbLayout
-                            color: root.colour
-                            font: Tokens.font.mono.medium
-                        }
-                    }
-                }
-                DelegateChoice {
-                    roleValue: "network"
-                    delegate: EntryWrapper {
-                        MaterialIcon {
-                            animate: true
-                            text: Nmcli.activeEthernet ? "cable" : Nmcli.active ? Icons.getNetworkIcon(Nmcli.active.strength ?? 0) : "wifi_off"
-                            color: root.colour
-                        }
-                    }
-                }
-                DelegateChoice {
-                    roleValue: "bluetooth"
-                    delegate: EntryWrapper {
-                        BluetoothStatus {
-                            colour: root.colour
-                        }
-                    }
-                }
-                DelegateChoice {
-                    roleValue: "battery"
-                    delegate: EntryWrapper {
-                        BatteryStatus {
-                            colour: root.colour
-                        }
-                    }
+
+                StyledText {
+                    Layout.alignment: root.vertical ? Qt.AlignHCenter : Qt.AlignVCenter
+                    visible: root.barConfig.status.showBatteryPercentage && parent.isLaptop
+                    animate: true
+                    text: Math.round(UPower.displayDevice.percentage * 100)
+                    color: parent.batteryColour
+                    font: Tokens.font.mono.small
                 }
             }
         }
     }
 
-    component EntryWrapper: Item {
-        required property var modelData
-        required property int index
-        property int margin: root.spacing / 2
-        readonly property bool present: !root.collapsed(modelData)
-        property real topGap: present && index !== root.firstPresent ? margin : 0
-        property real bottomGap: present && index !== root.lastPresent ? margin : 0
-        default property Item item
-        property string name: modelData.id.toLowerCase()
+    component WrappedLoader: Loader {
+        required property string name
 
-        Layout.topMargin: Math.round(topGap)
-        Layout.bottomMargin: Math.round(bottomGap)
-        Layout.alignment: Qt.AlignHCenter
-
-        implicitWidth: item?.implicitWidth ?? 0
-        implicitHeight: item?.implicitHeight ?? 0
-
-        children: item
-
-        Behavior on topGap {
-            Anim {
-                type: Anim.SlowEffects
-            }
-        }
-
-        Behavior on bottomGap {
-            Anim {
-                type: Anim.SlowEffects
-            }
-        }
+        asynchronous: true
+        Layout.alignment: root.vertical ? Qt.AlignHCenter : Qt.AlignVCenter
+        visible: active
     }
 }

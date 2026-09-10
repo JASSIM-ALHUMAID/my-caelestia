@@ -31,6 +31,14 @@ class LauncherConfig : public ConfigObject {
 
     CONFIG_PROPERTY(bool, enabled, true)
     CONFIG_PROPERTY(bool, showOnHover, false)
+    CONFIG_PROPERTY(QString, fullscreen, u"on"_s)
+    CONFIG_PROPERTY(QString, position, u"bottom"_s)
+    // "docked" hugs `position`; "floating" detaches from it by `gap` px, and additionally
+    // accepts `position: "center"` (meaningless while docked; coerced to bottom in QML).
+    CONFIG_PROPERTY(QString, mode, u"docked"_s)
+    CONFIG_PROPERTY(int, gap, 16)
+    CONFIG_PROPERTY(QString, appLayout, u"list"_s)
+    CONFIG_PROPERTY(int, gridColumns, 4)
     CONFIG_PROPERTY(int, maxShown, 7)
     CONFIG_PROPERTY(int, maxWallpapers, 9)
     CONFIG_GLOBAL_PROPERTY(QString, specialPrefix, u"@"_s)
@@ -48,6 +56,12 @@ class LauncherConfig : public ConfigObject {
                 { u"icon"_s, u"calculate"_s },
                 { u"description"_s, u"Do simple math equations (powered by Qalc)"_s },
                 { u"command"_s, QStringList{ u"autocomplete"_s, u"calc"_s } },
+            }),
+            vmap({
+                { u"name"_s, u"Timer"_s },
+                { u"icon"_s, u"timer"_s },
+                { u"description"_s, u"Start a countdown timer"_s },
+                { u"command"_s, QStringList{ u"autocomplete"_s, u"timer"_s } },
             }),
             vmap({
                 { u"name"_s, u"Scheme"_s },
@@ -71,7 +85,7 @@ class LauncherConfig : public ConfigObject {
                 { u"name"_s, u"Random"_s },
                 { u"icon"_s, u"casino"_s },
                 { u"description"_s, u"Switch to a random wallpaper"_s },
-                { u"command"_s, QStringList{ u"caelestia"_s, u"wallpaper"_s, u"-r"_s } },
+                { u"command"_s, QStringList{ u"wallpaper"_s, u"random"_s } },
             }),
             vmap({
                 { u"name"_s, u"Light"_s },
@@ -89,21 +103,21 @@ class LauncherConfig : public ConfigObject {
                 { u"name"_s, u"Shutdown"_s },
                 { u"icon"_s, u"power_settings_new"_s },
                 { u"description"_s, u"Shutdown the system"_s },
-                { u"command"_s, QStringList{ u"poweroff"_s } },
+                { u"command"_s, QStringList{ u"systemctl"_s, u"poweroff"_s } },
                 { u"dangerous"_s, true },
             }),
             vmap({
                 { u"name"_s, u"Reboot"_s },
                 { u"icon"_s, u"cached"_s },
                 { u"description"_s, u"Reboot the system"_s },
-                { u"command"_s, QStringList{ u"reboot"_s } },
+                { u"command"_s, QStringList{ u"systemctl"_s, u"reboot"_s } },
                 { u"dangerous"_s, true },
             }),
             vmap({
                 { u"name"_s, u"Logout"_s },
                 { u"icon"_s, u"exit_to_app"_s },
                 { u"description"_s, u"Log out of the current session"_s },
-                { u"command"_s, QStringList{ u"logout"_s } },
+                { u"command"_s, QStringList{ u"loginctl"_s, u"terminate-user"_s, u""_s } },
                 { u"dangerous"_s, true },
             }),
             vmap({
@@ -116,13 +130,39 @@ class LauncherConfig : public ConfigObject {
                 { u"name"_s, u"Sleep"_s },
                 { u"icon"_s, u"bedtime"_s },
                 { u"description"_s, u"Suspend then hibernate"_s },
-                { u"command"_s, QStringList{ u"suspendThenHibernate"_s } },
+                { u"command"_s, QStringList{ u"systemctl"_s, u"suspend-then-hibernate"_s } },
             }),
             vmap({
                 { u"name"_s, u"Settings"_s },
                 { u"icon"_s, u"settings"_s },
                 { u"description"_s, u"Configure the shell"_s },
                 { u"command"_s, QStringList{ u"caelestia"_s, u"shell"_s, u"nexus"_s, u"open"_s } },
+            }),
+            vmap({
+                { u"name"_s, u"Clipboard"_s },
+                { u"icon"_s, u"history"_s },
+                { u"description"_s, u"Search and copy clipboard history"_s },
+                { u"command"_s, QStringList{ u"autocomplete"_s, u"clip"_s } },
+            }),
+            vmap({
+                { u"name"_s, u"Emoji"_s },
+                { u"icon"_s, u"emoji_emotions"_s },
+                { u"description"_s, u"Search and copy emojis"_s },
+                { u"command"_s, QStringList{ u"autocomplete"_s, u"emoji"_s } },
+            }),
+            vmap({
+                { u"name"_s, u"Run command"_s },
+                { u"icon"_s, u"terminal"_s },
+                { u"description"_s, u"Run a command in the background"_s },
+                { u"command"_s, QStringList{ u"autocomplete"_s, u"run"_s } },
+                { u"dangerous"_s, true },
+            }),
+            vmap({
+                { u"name"_s, u"Pin"_s },
+                { u"icon"_s, u"favorite"_s },
+                { u"description"_s, u"Pin apps to the dock"_s },
+                { u"command"_s, QStringList{ u"autocomplete"_s, u"pin"_s } },
+                // Not dangerous: pinning is a reversible toggle via FavouriteApps.toggleFavourite()
             }),
         })
 

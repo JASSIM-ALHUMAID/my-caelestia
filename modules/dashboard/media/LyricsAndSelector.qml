@@ -70,10 +70,11 @@ Item {
     }
 
     component PlayerItem: MenuItem {
-        required property MprisPlayer modelData
+        required property QtObject modelData
 
         icon: modelData === Players.active ? "check" : ""
-        text: Players.getIdentity(modelData)
-        activeIcon: "animated_images"
+        // Streams have no transport - flag them so the entry doesn't promise controls
+        text: modelData?.isStreamPlayer ? qsTr("%1 (audio only)").arg(Players.getIdentity(modelData)) : Players.getIdentity(modelData)
+        activeIcon: modelData?.isStreamPlayer ? "graphic_eq" : "animated_images"
     }
 }

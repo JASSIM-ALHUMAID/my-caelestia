@@ -1,77 +1,52 @@
 pragma ComponentBehavior: Bound
 
 import "lock"
-import QtQuick
 import Quickshell
 import Quickshell.Wayland
-import Quickshell.Services.UPower
 import Caelestia.Config
-import Caelestia.Services
+import Caelestia.Internal
 import qs.services
 
 Scope {
     id: root
 
     required property Lock lock
-    readonly property bool hasPlayer: Players.list.some(p => p.isPlaying)
-    readonly property bool isCharging: !UPower.onBattery
-    readonly property bool enabled: {
-        if (GlobalConfig.general.idle.inhibitWhenAudio && hasPlayer)
-            return false;
-        if (GlobalConfig.general.idle.inhibitWhenCharging && isCharging)
-            return false;
-        return true;
-    }
+    // Screen-off and suspend are conveniences, so audio silences them. The lock is a security
+    // boundary and gets its own flag, or leaving music on would mean the session never locks.
+    readonly property bool enabled: !GlobalConfig.general.idle.inhibitWhenAudio || !Audio.hasActiveAudio
+    readonly property bool lockEnabled: !GlobalConfig.general.idle.inhibitLockWhenAudio || !Audio.hasActiveAudio
 
-    function handleIdleAction(action: var): void {
-        if (!action)
-            return;
-
-        if (action === "lock")
-            lock.lock.locked = true;
-        else if (action === "unlock")
-            lock.lock.locked = false;
-        else if (typeof action === "string")
-            Hypr.dispatch(Hypr.usingLua && ["dpms off", "dpms on"].includes(action) ? `hl.dsp.dpms({ action = "${action === "dpms off" ? "disable" : "enable"}" })` : action);
-        else if (!SessionManager.exec(action))
-            Quickshell.execDetached(action);
-    }
-
-    Connections {
-        function onAboutToSleep(): void {
+    LogindManager {
+        onAboutToSleep: {
             if (GlobalConfig.general.idle.lockBeforeSleep)
                 root.lock.lock.locked = true;
         }
-
-        function onLockRequested(): void {
-            root.lock.lock.locked = true;
-        }
-
-        function onUnlockRequested(): void {
-            root.lock.lock.unlock();
-        }
-
-        target: SessionManager
+        onResumed: root.lock.lock.resumed()
+        onLockRequested: root.lock.lock.locked = true
+        onUnlockRequested: root.lock.lock.unlock()
     }
 
-    Variants {
-        model: GlobalConfig.general.idle.timeouts
+    IdleMonitor {
+        enabled: root.lockEnabled && GlobalConfig.general.idle.lockTimeout > 0
+        timeout: GlobalConfig.general.idle.lockTimeout
+        onIsIdleChanged: {
+            if (isIdle)
+                root.lock.lock.locked = true;
+        }
+    }
 
-        IdleMonitor {
-            required property var modelData
+    IdleMonitor {
+        enabled: root.enabled && GlobalConfig.general.idle.screenOffTimeout > 0
+        timeout: GlobalConfig.general.idle.screenOffTimeout
+        onIsIdleChanged: Hypr.setDpms(isIdle ? "off" : "on")
+    }
 
-            enabled: {
-                if (!root.enabled || !(modelData.enabled ?? true))
-                    return false;
-                if (modelData.inhibitWhenAudio && root.hasPlayer)
-                    return false;
-                if (modelData.inhibitWhenCharging && root.isCharging)
-                    return false;
-                return true;
-            }
-            timeout: modelData.timeout
-            respectInhibitors: modelData.respectInhibitors ?? true
-            onIsIdleChanged: root.handleIdleAction(isIdle ? modelData.idleAction : modelData.returnAction)
+    IdleMonitor {
+        enabled: root.enabled && GlobalConfig.general.idle.suspendTimeout > 0
+        timeout: GlobalConfig.general.idle.suspendTimeout
+        onIsIdleChanged: {
+            if (isIdle)
+                Quickshell.execDetached(["systemctl", "suspend-then-hibernate"]);
         }
     }
 }

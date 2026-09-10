@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import Quickshell.Widgets
 import Caelestia.Config
 import qs.components
 import qs.services
@@ -19,7 +20,11 @@ Row {
     property bool menuOnTop
     property string fallbackIcon
     property string fallbackText
+    property string fallbackIconSource
     property real minLeftWidth
+
+    // Image path for the active item, if it supplies one -- replaces the Material glyph
+    readonly property string activeIconSource: root.active?.activeIconSource ?? root.fallbackIconSource
 
     property alias menuItems: menu.items
     property alias active: menu.active
@@ -36,7 +41,7 @@ Row {
     property color disabledColour: Qt.alpha(Colours.palette.m3onSurface, 0.1)
     property color disabledTextColour: Qt.alpha(Colours.palette.m3onSurface, 0.38)
 
-    spacing: Math.floor(Tokens.spacing.extraSmall / 2)
+    spacing: Math.floor(Tokens.spacing.extraSmall)
 
     StyledRect {
         radius: implicitHeight / 2 * Math.min(1, Tokens.rounding.scale)
@@ -64,10 +69,25 @@ Row {
             anchors.horizontalCenterOffset: Math.floor(root.verticalPadding / 4)
             spacing: Tokens.spacing.small
 
+            Loader {
+                asynchronous: true
+                Layout.alignment: Qt.AlignVCenter
+                active: root.activeIconSource.length > 0
+                visible: active
+
+                sourceComponent: IconImage {
+                    asynchronous: true
+                    source: root.activeIconSource
+                    implicitSize: iconLabel.implicitHeight
+                }
+            }
+
             MaterialIcon {
                 id: iconLabel
 
                 Layout.alignment: Qt.AlignVCenter
+                Layout.preferredWidth: visible ? implicitWidth : 0
+                visible: root.activeIconSource.length === 0
                 animate: true
                 text: root.active?.activeIcon ?? root.fallbackIcon
                 color: root.disabled ? root.disabledTextColour : root.textColour

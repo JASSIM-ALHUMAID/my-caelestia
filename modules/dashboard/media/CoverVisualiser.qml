@@ -18,8 +18,40 @@ Item {
     readonly property real spacing: Tokens.spacing.medium
     readonly property real maxMagnitude: (implicitWidth - cover.implicitWidth) / 2 - spacing
 
+    property var smoothedValues: []
+
     ServiceRef {
         service: Audio.cava
+    }
+
+    FrameAnimation {
+        running: true
+        onTriggered: {
+            const src = Audio.cava.values;
+            const n = src.length;
+            if (n === 0) {
+                root.smoothedValues = [];
+                return;
+            }
+            const tilt = GlobalConfig.services.visualiserTilt;
+            const raw = new Array(n);
+            for (let i = 0; i < n; i++) {
+                const mult = n > 1 ? 1 + tilt * (i / (n - 1)) : 1;
+                raw[i] = (src[i] || 0) * mult;
+            }
+            const prev = root.smoothedValues;
+            if (prev.length !== n) {
+                root.smoothedValues = raw;
+                return;
+            }
+            const tau = 0.05;
+            const alpha = 1.0 - Math.exp(-frameTime / tau);
+            const smoothed = new Array(n);
+            for (let i = 0; i < n; i++) {
+                smoothed[i] = prev[i] + (raw[i] - prev[i]) * alpha;
+            }
+            root.smoothedValues = smoothed;
+        }
     }
 
     Shape {
@@ -40,7 +72,7 @@ Item {
             id: bar
 
             required property int modelData
-            readonly property real value: Math.max(1e-2, Math.min(1, Audio.cava.values[modelData]))
+            readonly property real value: Math.max(1e-2, Math.min(1, root.smoothedValues[modelData] ?? 0))
 
             readonly property real angle: modelData * 2 * Math.PI / GlobalConfig.services.visualiserBars
             readonly property real dist: shapeEdgeDist + value * root.maxMagnitude

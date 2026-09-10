@@ -8,14 +8,16 @@ import qs.components
 Item {
     id: root
 
-    required property ScreenState screenState
+    required property DrawerVisibilities visibilities
+    required property bool atRight
     readonly property Props props: Props {}
 
-    readonly property bool shouldBeActive: screenState.sidebar && Config.sidebar.enabled
+    readonly property bool shouldBeActive: visibilities.sidebar && Config.sidebar.enabled
     property real offsetScale: shouldBeActive ? 0 : 1
 
     visible: offsetScale < 1
-    anchors.rightMargin: (-implicitWidth - 5) * offsetScale
+    anchors.rightMargin: atRight ? (-implicitWidth - 5) * offsetScale : 0
+    anchors.leftMargin: atRight ? 0 : (-implicitWidth - 5) * offsetScale
     implicitWidth: Tokens.sizes.sidebar.width
     opacity: 1 - offsetScale
 
@@ -38,7 +40,7 @@ Item {
         sourceComponent: Content {
             implicitWidth: Tokens.sizes.sidebar.width - content.anchors.leftMargin - content.anchors.margins
             props: root.props
-            screenState: root.screenState
+            visibilities: root.visibilities
         }
     }
 }

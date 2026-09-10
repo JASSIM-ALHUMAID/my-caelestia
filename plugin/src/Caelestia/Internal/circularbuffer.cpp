@@ -73,6 +73,28 @@ void CircularBuffer::push(qreal value) {
     emit valuesChanged();
 }
 
+void CircularBuffer::setValues(const QList<qreal>& values) {
+    if (m_capacity <= 0)
+        return;
+
+    const auto oldCount = m_count;
+
+    m_head = 0;
+    m_count = 0;
+
+    // Keep the most recent values, same as setCapacity does when it re-pushes
+    const auto start = values.size() > m_capacity ? values.size() - m_capacity : 0;
+    for (auto i = start; i < values.size(); ++i) {
+        m_data[m_head] = values[i];
+        m_head = (m_head + 1) % m_capacity;
+        m_count++;
+    }
+
+    if (m_count != oldCount)
+        emit countChanged();
+    emit valuesChanged();
+}
+
 void CircularBuffer::clear() {
     if (m_count == 0)
         return;

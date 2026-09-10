@@ -1,0 +1,812 @@
+{
+    "appearance": {
+        "anim": {
+            "durations": {
+                "scale": 1.1148437500000001
+            }
+        },
+        "transparency": {
+            "base": 0.8799999999999999,
+            "enabled": true,
+            "layers": 0.5979713397790056
+        }
+    },
+    "background": {
+        "advanceOrder": "random",
+        "advancePool": "all",
+        "desktopBattery": {
+            "background": {
+                "enabled": false,
+                "opacity": 0.6614015020718231
+            },
+            "chargingBoltPulse": true,
+            "chargingBoltPulseStrength": 0,
+            "chargingBubbles": true,
+            "chargingEnergisedWave": false,
+            "chargingGlow": false,
+            "chargingRandom": false,
+            "enabled": true,
+            "invertColors": false,
+            "position": "top-right",
+            "style": 2,
+            "waveOnlyWhenCharging": true,
+            "waveStyle": 0,
+            "wavy": true
+        },
+        "desktopClock": {
+            "background": {
+                "blur": false,
+                "enabled": false,
+                "opacity": 0.16063846564440992
+            },
+            "enabled": true,
+            "invertColors": false,
+            "position": "top-left",
+            "scale": 0.7
+        },
+        "fillMode": "cover",
+        "pauseAudioWhenOtherPlaying": false,
+        "rotationEnabled": true,
+        "rotationIntervalMinutes": 30,
+        "transitionCurve": null,
+        "transitionDuration": 3000,
+        "transitionEasing": "custom",
+        "transitionHoneycombSize": 1,
+        "transitionInterrupt": "reverse",
+        "transitionInterruptReplay": "new",
+        "transitionStripeCount": 0,
+        "transitionType": "wave,grow,outer,stripes",
+        "transitionWaveCount": 8,
+        "videoAudio": false,
+        "videoLoops": 0,
+        "videoPlayToEnd": true,
+        "videoProgress": {
+            "enabled": true,
+            "position": "right",
+            "style": "straight",
+            "thickness": 10
+        },
+        "videoSeekStepSeconds": 9,
+        "visualiser": {
+            "blur": true,
+            "centerGap": 0,
+            "enabled": true,
+            "position": "top",
+            "reach": 0.15,
+            "rounding": 3,
+            "spacing": 0.4,
+            "style": "bars"
+        }
+    },
+    "bar": {
+        "bottom": {
+            "activeWindow": {
+                "compact": false,
+                "inverted": false,
+                "showOnHover": true
+            },
+            "clock": {
+                "background": true,
+                "showDate": true,
+                "showIcon": false
+            },
+            "dock": {
+                "activeIndicatorPosition": "bottom",
+                "iconSize": 30,
+                "indicatorGap": 40
+            },
+            "dragThreshold": 20,
+            "enabled": true,
+            "endCornerPadding": 0,
+            "entries": [
+                {
+                    "enabled": true,
+                    "id": "logo",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "workspaces",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "barPin",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "wallpaperAdvance",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "layoutSelector",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "spacer",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "dock",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "spacer",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "visualiser",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "tray",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "statusIcons",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "clock",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "logo",
+                    "variant": "os"
+                }
+            ],
+            "floating": false,
+            "persistent": true,
+            "popouts": {
+                "activeWindow": true,
+                "gap": 12,
+                "hoverGrace": 200,
+                "mode": "hugged"
+            },
+            "revealOnEmptyWorkspace": true,
+            "showOnHover": true,
+            "startCornerPadding": 0,
+            "tray": {
+                "background": true,
+                "compact": true,
+                "recolour": true
+            },
+            "visualiser": {
+                "bars": 10,
+                "beatPulse": true,
+                "clickAction": "nexus",
+                "silenceBehavior": "hide"
+            },
+            "workspaces": {
+                "activeTrail": true,
+                "appIcons": true,
+                "numbered": true,
+                "occupiedBg": true,
+                "showWindowsOnActive": true,
+                "windowIconSpacing": 3
+            },
+            "zIndex": 5
+        },
+        "left": {
+            "clock": {
+                "background": true,
+                "showDate": true,
+                "showIcon": false
+            },
+            "dock": {
+                "indicatorGap": 3
+            },
+            "enabled": false,
+            "endCornerPadding": 30,
+            "entries": [
+                {
+                    "enabled": true,
+                    "id": "logo",
+                    "variant": "os"
+                },
+                {
+                    "enabled": true,
+                    "id": "spacer",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "workspaces",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "spacer",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "dock",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "tray",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "clock",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "statusIcons",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "logo",
+                    "variant": "auto"
+                }
+            ],
+            "floating": true,
+            "persistent": true,
+            "popouts": {
+                "gap": 12,
+                "hoverGrace": 200,
+                "mode": "floating"
+            },
+            "revealOnEmptyWorkspace": true,
+            "startCornerPadding": 0,
+            "status": {
+                "showBatteryPercentage": true,
+                "showKbLayout": true,
+                "showMicrophone": true
+            },
+            "tray": {
+                "background": true,
+                "compact": true,
+                "recolour": true
+            },
+            "workspaces": {
+                "activeIndicator": true,
+                "appIcons": true,
+                "numbered": true,
+                "occupiedBg": true,
+                "showWindowsOnActive": false
+            },
+            "zIndex": 0
+        },
+        "right": {
+            "clock": {
+                "background": true,
+                "showDate": true,
+                "showIcon": false
+            },
+            "dock": {
+                "activeIndicatorPosition": "right",
+                "iconSize": 32,
+                "indicatorGap": 34
+            },
+            "enabled": false,
+            "endCornerPadding": 0,
+            "entries": [
+                {
+                    "enabled": true,
+                    "id": "logo",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "workspaces",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "barPin",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "wallpaperAdvance",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "layoutSelector",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "spacer",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "dock",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "visualiser",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "spacer",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "tray",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "clock",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "statusIcons",
+                    "variant": "auto"
+                }
+            ],
+            "floating": false,
+            "hideOnHoverOut": true,
+            "overflow": {
+                "minDockIcons": 2,
+                "minTrayIcons": 2,
+                "minWindowIcons": 1,
+                "mode": "popout",
+                "showCount": true
+            },
+            "persistent": false,
+            "popouts": {
+                "activeWindow": true,
+                "gap": 16,
+                "hoverGrace": 50,
+                "mode": "hugged",
+                "statusIcons": true,
+                "tray": true
+            },
+            "revealOnEmptyWorkspace": true,
+            "showOnHover": true,
+            "status": {
+                "showAudio": false,
+                "showBatteryPercentage": false,
+                "showKbLayout": true,
+                "showMicrophone": true
+            },
+            "tray": {
+                "background": true,
+                "compact": true,
+                "recolour": true
+            },
+            "visualiser": {
+                "barAmplitude": 200,
+                "barColorMode": "gradient",
+                "barRounding": 20,
+                "barSpacing": 2,
+                "barWidth": 10,
+                "bars": 14,
+                "beatPulse": true,
+                "clickAction": "nexus",
+                "fillMode": "center",
+                "silenceBehavior": "hide",
+                "smoothing": 120,
+                "tilt": 0.7
+            },
+            "workspaces": {
+                "activeIndicator": true,
+                "activeTrail": false,
+                "appIcons": true,
+                "numbered": true,
+                "occupiedBg": true,
+                "showWindowsOnActive": true
+            }
+        },
+        "top": {
+            "clock": {
+                "background": true,
+                "showDate": true,
+                "showIcon": false
+            },
+            "dock": {
+                "activeIndicatorPosition": "top"
+            },
+            "enabled": false,
+            "endCornerPadding": 30,
+            "entries": [
+                {
+                    "enabled": true,
+                    "id": "logo",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "dock",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "activeWindow",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "spacer",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "clock",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "dock",
+                    "variant": "auto"
+                },
+                {
+                    "enabled": true,
+                    "id": "tray",
+                    "variant": "auto"
+                }
+            ],
+            "startCornerPadding": 2,
+            "status": {
+                "showBatteryPercentage": false,
+                "showKbLayout": true,
+                "showMicrophone": true
+            },
+            "tray": {
+                "background": true,
+                "compact": false,
+                "recolour": false
+            },
+            "workspaces": {
+                "appIcons": false,
+                "numbered": true,
+                "occupiedBg": false
+            },
+            "zIndex": 5
+        }
+    },
+    "border": {
+        "rounding": 20,
+        "thickness": 8
+    },
+    "dashboard": {
+        "enabled": true,
+        "fullscreen": "on",
+        "mediaUpdateInterval": 450,
+        "position": "bottom",
+        "showOnHover": true
+    },
+    "dock": {
+        "availableOnFullscreen": true,
+        "dragAndDrop": true,
+        "enabled": true,
+        "hideOnHoverOut": true,
+        "hoverGrace": 1000,
+        "iconSize": 40,
+        "keepHidden": false,
+        "margin": 0,
+        "pinned": false,
+        "popoutGap": 12,
+        "popoutMode": "floating",
+        "position": "left",
+        "revealOnEmptyWorkspace": true,
+        "showAddButton": false,
+        "showEditButton": false,
+        "showHoverPopout": true,
+        "showOnHover": true,
+        "showPinButton": true,
+        "showSpecialWorkspaceApps": false,
+        "spacing": 3
+    },
+    "edges": {
+        "bottom": {
+            "drag": "dashboard",
+            "hover": "none"
+        },
+        "left": {
+            "drag": "dock",
+            "hover": "dock"
+        },
+        "right": {
+            "drag": "none",
+            "hover": "none"
+        },
+        "top": {
+            "drag": "session",
+            "hover": "osd"
+        }
+    },
+    "general": {
+        "idle": {
+            "inhibitWhenAudio": true,
+            "lockBeforeSleep": true,
+            "lockTimeout": 180,
+            "screenOffTimeout": 300,
+            "suspendTimeout": 0
+        },
+        "logo": "caelestia",
+        "screensaver": {
+            "effect": "logo",
+            "enabled": true,
+            "randomEffects": false,
+            "timeout": 60,
+            "videoPath": ""
+        }
+    },
+    "launcher": {
+        "actionPrefix": "/",
+        "appLayout": "grid",
+        "enableDangerousActions": true,
+        "enabled": true,
+        "favouriteApps": [
+            "^zen$",
+            "^Harbor Beta$",
+            "^brave-agimnkijcaahngcdmfeangaknmldooml-Default$",
+            "^devin-desktop$",
+            "^steam$",
+            "^org\\.wezfurlong\\.wezterm$"
+        ],
+        "gridColumns": 4,
+        "maxShown": 7,
+        "maxWallpapers": 7,
+        "position": "top",
+        "showOnHover": true,
+        "useFuzzy": {
+            "actions": true,
+            "apps": true,
+            "schemes": true,
+            "variants": true,
+            "wallpapers": true
+        },
+        "vimKeybinds": true
+    },
+    "lock": {
+        "allowScreensaver": true,
+        "blurred": 1,
+        "centerWidgets": [
+            {
+                "enabled": true,
+                "id": "clock"
+            },
+            {
+                "enabled": true,
+                "id": "date"
+            },
+            {
+                "enabled": true,
+                "id": "profilePic"
+            },
+            {
+                "enabled": true,
+                "id": "passwordInput"
+            },
+            {
+                "enabled": true,
+                "id": "stateMessage"
+            }
+        ],
+        "enableFprint": true,
+        "hideNotifs": true,
+        "hideWindows": true,
+        "leftWidgets": [
+            {
+                "enabled": true,
+                "id": "weather"
+            },
+            {
+                "enabled": true,
+                "id": "fetch"
+            },
+            {
+                "enabled": true,
+                "id": "media"
+            },
+            {
+                "enabled": true,
+                "id": "power"
+            }
+        ],
+        "mediaControls": false,
+        "minimal": true,
+        "passwordShapes": [
+            "Circle",
+            "Square",
+            "Slanted",
+            "Arch",
+            "Fan",
+            "Arrow",
+            "SemiCircle",
+            "Oval",
+            "Pill",
+            "Triangle",
+            "Diamond",
+            "ClamShell",
+            "Pentagon",
+            "Gem",
+            "Sunny",
+            "VerySunny",
+            "Cookie4Sided",
+            "Cookie6Sided",
+            "Cookie7Sided",
+            "Cookie9Sided",
+            "Cookie12Sided",
+            "Ghostish",
+            "Clover4Leaf",
+            "Clover8Leaf",
+            "Burst",
+            "SoftBurst",
+            "Boom",
+            "SoftBoom",
+            "Flower",
+            "Puffy",
+            "PuffyDiamond",
+            "PixelCircle",
+            "PixelTriangle",
+            "Bun",
+            "Heart"
+        ],
+        "recolourLogo": true,
+        "rightWidgets": [
+            {
+                "enabled": true,
+                "id": "resources"
+            },
+            {
+                "enabled": true,
+                "id": "notifications"
+            },
+            {
+                "enabled": true,
+                "id": "quote"
+            }
+        ]
+    },
+    "notifs": {
+        "actionOnClick": true,
+        "hoverGrace": 200,
+        "openExpanded": false,
+        "popoutGap": 8,
+        "popoutMode": "hugged"
+    },
+    "osd": {
+        "enabled": true,
+        "position": "top"
+    },
+    "services": {
+        "appAudioSettings": "com.github.wwmm.easyeffects",
+        "appBrowser": "zen",
+        "appEditor": "devin-desktop",
+        "appFileExplorer": "org.gnome.Nautilus",
+        "appTerminal": "org.wezfurlong.wezterm",
+        "audioIncrement": 0.08,
+        "blurPasses": 2,
+        "blurSize": 8,
+        "brightnessIncrement": 0.08,
+        "cfgAccelProfile": "flat",
+        "cfgAnimationsEnabled": true,
+        "cfgLayout": "scrolling",
+        "cfgSwipeDistance": 400,
+        "cursorSize": 24,
+        "cursorTheme": "material_light_cursors",
+        "kbToggleWindowFloating": "SUPER + SHIFT + F",
+        "maxVolume": 1.1,
+        "modeOverride": "dark",
+        "singleWindowGapsOut": 20,
+        "useFahrenheit": false,
+        "visualiserBars": 33,
+        "visualiserTilt": 1,
+        "windowOpacity": 1,
+        "workspaceGaps": 20,
+        "workspaceSwipeFingers": 3
+    },
+    "session": {
+        "iconStyle": "outlined",
+        "items": [
+            {
+                "enabled": false,
+                "id": "logout",
+                "order": 3
+            },
+            {
+                "id": "reboot",
+                "order": 4
+            },
+            {
+                "id": "shutdown",
+                "order": 5
+            },
+            {
+                "id": "gif",
+                "order": 2
+            }
+        ],
+        "position": "top",
+        "showOnHover": true,
+        "vimKeybinds": false
+    },
+    "sidebar": {
+        "edge": "left"
+    },
+    "utilities": {
+        "enabled": true,
+        "hyprsunset": {
+            "automatic": true,
+            "enabled": false,
+            "from": "23:00",
+            "gamma": 100,
+            "temperature": 4372,
+            "to": "06:30"
+        },
+        "quickToggles": [
+            {
+                "enabled": true,
+                "id": "wifi"
+            },
+            {
+                "enabled": true,
+                "id": "bluetooth"
+            },
+            {
+                "enabled": false,
+                "id": "mic"
+            },
+            {
+                "enabled": true,
+                "id": "settings"
+            },
+            {
+                "enabled": true,
+                "id": "gameMode"
+            },
+            {
+                "enabled": false,
+                "id": "dnd"
+            },
+            {
+                "enabled": true,
+                "id": "hyprsunset"
+            },
+            {
+                "enabled": true,
+                "id": "vpn"
+            }
+        ],
+        "sounds": {
+            "enabled": true
+        },
+        "toasts": {
+            "fullscreen": "all"
+        },
+        "vpn": {
+            "provider": [
+                {
+                    "connectCmd": [
+                        "protonvpn",
+                        "connect"
+                    ],
+                    "disconnectCmd": [
+                        "protonvpn",
+                        "disconnect"
+                    ],
+                    "displayName": "Proton VPN",
+                    "enabled": true,
+                    "name": "protonvpn"
+                }
+            ]
+        }
+    }
+}

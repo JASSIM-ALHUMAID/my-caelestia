@@ -11,7 +11,10 @@ import qs.utils
 Item {
     id: root
 
-    required property ScreenState screenState
+    required property DrawerVisibilities visibilities
+    readonly property DashboardState dashState: DashboardState {
+        reloadableId: "dashboardState"
+    }
     readonly property FileDialog facePicker: FileDialog {
         title: qsTr("Select a profile picture")
         filterLabel: qsTr("Image files")
@@ -25,11 +28,14 @@ Item {
     }
 
     readonly property real nonAnimHeight: (content.item as Content)?.nonAnimHeight ?? 0
-    readonly property bool shouldBeActive: screenState.dashboard && Config.dashboard.enabled
+    readonly property bool shouldBeActive: visibilities.dashboard && Config.dashboard.enabled
     property real offsetScale: shouldBeActive ? 0 : 1
 
     visible: offsetScale < 1
+    // Only the margin matching the currently anchored edge takes effect; both slide the
+    // panel away from its screen edge (up when at top, down when at bottom).
     anchors.topMargin: (-implicitHeight - 5) * offsetScale
+    anchors.bottomMargin: (-implicitHeight - 5) * offsetScale
     implicitHeight: content.implicitHeight
     implicitWidth: content.implicitWidth || 854 // Hard coded fallback for first open
     opacity: 1 - offsetScale
@@ -47,7 +53,8 @@ Item {
         active: root.shouldBeActive || root.visible
 
         sourceComponent: Content {
-            screenState: root.screenState
+            visibilities: root.visibilities
+            dashState: root.dashState
             facePicker: root.facePicker
         }
     }

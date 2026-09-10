@@ -10,7 +10,8 @@ import qs.services
 ColumnLayout {
     id: root
 
-    readonly property bool hasUnknownLength: (Players.active?.length ?? 0) > 2147483647
+    // Stream players are apps with no MPRIS interface - all we can offer is volume
+    readonly property bool isStream: Players.active?.isStreamPlayer ?? false
 
     function lengthStr(length: int): string {
         if (length < 0)
@@ -28,7 +29,7 @@ ColumnLayout {
     spacing: Tokens.spacing.extraSmall
 
     Timer {
-        running: Players.active?.isPlaying ?? false
+        running: !root.isStream && (Players.active?.isPlaying ?? false)
         interval: GlobalConfig.dashboard.mediaUpdateInterval
         triggeredOnStart: true
         repeat: true
@@ -45,7 +46,7 @@ ColumnLayout {
 
     StyledText {
         Layout.fillWidth: true
-        text: Players.active?.trackArtist || qsTr("Unknown artist")
+        text: root.isStream ? qsTr("No track info available") : Players.active?.trackArtist || qsTr("Unknown artist")
         color: Colours.palette.m3onSurfaceVariant
         font: Tokens.font.title.medium
         elide: Text.ElideRight
@@ -54,6 +55,7 @@ ColumnLayout {
 
     StyledText {
         Layout.fillWidth: true
+        visible: !root.isStream
         text: Players.active?.trackAlbum || qsTr("Unknown album")
         color: Colours.palette.m3secondary
         font: Tokens.font.title.medium
@@ -65,11 +67,12 @@ ColumnLayout {
         Layout.topMargin: Tokens.spacing.extraLargeIncreased
         Layout.fillWidth: true
         spacing: Tokens.spacing.small
+        visible: !root.isStream
 
         TextMetrics {
             id: timeMetrics
 
-            text: Players.active ? root.lengthStr(Math.max(Players.active.position, root.hasUnknownLength ? 0 : Players.active.length)).replace(/[1-9]/g, "0") : "00:00"
+            text: Players.active ? root.lengthStr(Math.max(Players.active.position, Players.active.length)).replace(/[1-9]/g, "0") : "00:00"
             font: Tokens.font.label.medium
         }
 
@@ -88,7 +91,7 @@ ColumnLayout {
 
             Layout.fillWidth: true
             value: Players.active ? Players.active.position / (Players.active.length || 1) : 0
-            enabled: (Players.active?.canSeek ?? false) && !root.hasUnknownLength
+            enabled: Players.active?.canSeek ?? false
             wavy: true
             animateWave: Players.active?.isPlaying ?? false
             waveFrequency: 5
@@ -110,7 +113,46 @@ ColumnLayout {
 
         StyledText {
             Layout.preferredWidth: timeMetrics.width
-            text: root.hasUnknownLength ? "--:--" : root.lengthStr(Players.active?.length ?? -1)
+            text: root.lengthStr(Players.active?.length ?? -1)
+            color: Colours.palette.m3onSurfaceVariant
+            font: timeMetrics.font
+            horizontalAlignment: Text.AlignHCenter
+        }
+    }
+
+    RowLayout {
+        Layout.topMargin: Tokens.spacing.extraLargeIncreased
+        Layout.fillWidth: true
+        spacing: Tokens.spacing.small
+        visible: root.isStream
+
+        IconButton {
+            type: IconButton.Tonal
+            icon: Players.active?.muted ? "volume_off" : "volume_up"
+            isRound: true
+            shapeMorph: true
+            checked: Players.active?.muted ?? false
+            font: Tokens.font.icon.builders.medium.weight(Font.Medium).build()
+            onClicked: Players.active?.toggleMuted()
+        }
+
+        StyledSlider {
+            id: volumeSlider
+
+            Layout.fillWidth: true
+            value: Players.active?.volume ?? 0
+            enabled: root.isStream
+            wavy: true
+            animateWave: (Players.active?.isPlaying ?? false) && !(Players.active?.muted ?? false)
+            waveFrequency: 5
+            waveDuration: 2000
+            interactionOnMove: true
+            onInteraction: value => Players.active?.setVolume(value)
+        }
+
+        StyledText {
+            Layout.preferredWidth: timeMetrics.width
+            text: qsTr("%1%").arg(Math.round((Players.active?.volume ?? 0) * 100))
             color: Colours.palette.m3onSurfaceVariant
             font: timeMetrics.font
             horizontalAlignment: Text.AlignHCenter
@@ -121,6 +163,7 @@ ColumnLayout {
         Layout.topMargin: Tokens.spacing.largeIncreased
         Layout.fillWidth: true
         spacing: Tokens.spacing.extraSmall
+        visible: !root.isStream
 
         IconButton {
             type: IconButton.Tonal

@@ -8,6 +8,7 @@ namespace caelestia::controls {
 WavyLine::WavyLine(QQuickItem* parent)
     : QQuickPaintedItem(parent)
     , m_lineWidth(4)
+    , m_filled(false)
     , m_amplitudeMultiplier(0.5)
     , m_frequency(6)
     , m_startX(0)
@@ -32,6 +33,18 @@ void WavyLine::setLineWidth(int lineWidth) {
     if (m_lineWidth != lineWidth) {
         m_lineWidth = lineWidth;
         emit lineWidthChanged();
+        update();
+    }
+}
+
+bool WavyLine::filled() const {
+    return m_filled;
+}
+
+void WavyLine::setFilled(bool filled) {
+    if (m_filled != filled) {
+        m_filled = filled;
+        emit filledChanged();
         update();
     }
 }
@@ -202,6 +215,20 @@ void WavyLine::paintLinear(QPainter* painter) {
         } else {
             path.lineTo(x, waveY);
         }
+    }
+
+    if (m_filled) {
+        // Close the sine down to the item's own bottom edge and fill the region it
+        // bounds. Decouples amplitude from the stroke width, which a stroked boundary
+        // caps at a quarter of its thickness to stay gap-free.
+        if (first) {
+            return;
+        }
+        path.lineTo(drawEnd, height());
+        path.lineTo(start, height());
+        path.closeSubpath();
+        painter->fillPath(path, QBrush(m_color));
+        return;
     }
 
     painter->drawPath(path);

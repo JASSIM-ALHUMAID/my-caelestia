@@ -15,6 +15,8 @@ Item {
 
     readonly property alias shape: shape
 
+    readonly property string streamIcon: Players.active?.isStreamPlayer ? Players.active.iconSource : ""
+
     property bool hadPrevious
     property color fallbackColour: Colours.layer(Colours.palette.m3surfaceContainerHighest, 2)
 
@@ -57,6 +59,18 @@ Item {
         }
     }
 
+    // Stream players have no cover art - show the app's own icon instead
+    Loader {
+        anchors.centerIn: parent
+        asynchronous: true
+        active: root.streamIcon !== ""
+
+        sourceComponent: CachingIconImage {
+            implicitSize: root.width * 0.4
+            source: root.streamIcon
+        }
+    }
+
     MaterialIcon {
         anchors.centerIn: parent
 
@@ -64,7 +78,7 @@ Item {
         text: image.status === Image.Error ? "broken_image" : "art_track"
         color: Colours.palette.m3onSurfaceVariant
         fontStyle: Tokens.font.icon.size((parent.width * 0.35) || 1).build()
-        opacity: image.status === Image.Null || image.status === Image.Error ? 1 : 0
+        opacity: root.streamIcon === "" && (image.status === Image.Null || image.status === Image.Error) ? 1 : 0
         animate: true
 
         Behavior on opacity {

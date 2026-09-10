@@ -82,16 +82,13 @@ Singleton {
         Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-m", mode]);
     }
 
+    // Goes through eval rather than `keyword`: under a lua config Hyprland rejects `keyword`
+    // and still exits 0, so the rule was being dropped without a word. Same reasoning as
+    // Hypr.reloadDynamicConfs. Both properties ride one layer_rule call, matching how
+    // hyprland/rules.lua writes multi-property rules.
     function reloadHyprRules(): void {
-        let rule, trEnabled;
-        if (Hypr.usingLua) {
-            rule = `eval hl.layer_rule({ match = { namespace = "caelestia-drawers" }, %1 = %2 })`;
-            trEnabled = transparency.enabled;
-        } else {
-            rule = "keyword layerrule %1 %2, match:namespace caelestia-drawers";
-            trEnabled = transparency.enabled ? 1 : 0;
-        }
-        Hypr.extras.batchMessage([rule.arg("blur").arg(trEnabled), rule.arg("ignore_alpha").arg(Math.max(0, transparency.base - 0.03))]);
+        const rule = `{ match = { namespace = "caelestia-drawers" }, blur = ${transparency.enabled}, ignore_alpha = ${transparency.base - 0.03} }`;
+        Hypr.extras.batchMessage([`eval hl.layer_rule(${rule})`]);
     }
 
     function requestReloadHyprRules(): void {
@@ -117,13 +114,16 @@ Singleton {
         path: `${Paths.state}/scheme.json`
         watchChanges: true
         onFileChanged: reload()
-        onLoaded: root.load(text(), false)
+        onLoaded: {
+            root.load(text(), false);
+            Wallpapers.previewColourLock = false;
+        }
     }
 
     ImageAnalyser {
         id: analyser
 
-        source: Wallpapers.current
+        source: Wallpapers.currentAnalysable
     }
 
     Timer {
@@ -149,7 +149,7 @@ Singleton {
     component Transparency: QtObject {
         readonly property bool enabled: Tokens.transparency.enabled
         readonly property real base: Math.max(0, Math.min(1, Tokens.transparency.base - (root.light ? 0.1 : 0)))
-        readonly property real layers: Math.max(0, Math.min(1, Tokens.transparency.layers))
+        readonly property real layers: Tokens.transparency.layers
 
         onEnabledChanged: {
             if (enabled)

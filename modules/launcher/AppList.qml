@@ -13,55 +13,25 @@ import qs.modules.launcher.services
 StyledListView {
     id: root
 
-    required property SearchBar search
-    required property ScreenState screenState
-
-    property string displayText
-
-    readonly property string requestedState: stateForText(search.text)
-    readonly property string displayState: stateForText(displayText)
-
-    function syncDisplayText(): void {
-        if (screenState.launcher && requestedState === displayState)
-            displayText = search.text;
-    }
-
-    function stateForText(text: string): string {
-        const prefix = GlobalConfig.launcher.actionPrefix;
-        if (text.startsWith(prefix)) {
-            for (const action of ["calc", "scheme", "variant"])
-                if (text.startsWith(`${prefix}${action} `))
-                    return action;
-
-            return "actions";
-        }
-
-        return "apps";
-    }
-
-    function resultsForText(text: string): var {
-        switch (stateForText(text)) {
-        case "actions":
-            return Actions.query(text);
-        case "calc":
-            return [0];
-        case "scheme":
-            return Schemes.query(text);
-        case "variant":
-            return M3Variants.query(text);
-        default:
-            return Apps.search(text);
-        }
-    }
+    required property StyledTextField search
+    required property DrawerVisibilities visibilities
+    // Computed once, in ContentList, from the same search prefixes that decide list-vs-grid —
+    // one source of truth instead of two places parsing the same text independently.
+    required property string listState
 
     model: ScriptModel {
-        values: root.resultsForText(root.displayText)
+        id: model
+
         onValuesChanged: root.currentIndex = 0
     }
 
     spacing: Tokens.spacing.small
     orientation: Qt.Vertical
-    implicitHeight: (Tokens.sizes.launcher.itemHeight + spacing) * Math.min(Config.launcher.maxShown, count) - spacing
+    // The delegate decides its own height now — app rows grow with iconScale, action and calc
+    // rows don't — so measure the real one instead of assuming the token.
+    readonly property int rowHeight: currentItem?.implicitHeight ?? Tokens.sizes.launcher.itemHeight
+
+    implicitHeight: state === "emoji" ? 400 : (rowHeight + spacing) * Math.min(Config.launcher.maxShown, count) - spacing
 
     preferredHighlightBegin: 0
     preferredHighlightEnd: height
@@ -82,20 +52,53 @@ StyledListView {
         }
     }
 
-    state: screenState.launcher ? requestedState : displayState
+    // AppList has no "wallpapers" state — WallpaperList handles that one — but it stays loaded
+    // through the cross-fade into it, and an unknown state name would revert every
+    // PropertyChanges above and blank the list mid-animation. "actions" is what the old
+    // in-AppList state machine resolved the wallpaper prefix to, so the fade looks unchanged.
+    state: listState === "wallpapers" ? "actions" : listState
+
+    function incrementCurrentIndex(): void {
+        if (state === "emoji" && currentItem) {
+            currentItem.incrementCurrentIndex();
+        } else {
+            currentIndex = (currentIndex + 1) % count;
+        }
+    }
+
+    function decrementCurrentIndex(): void {
+        if (state === "emoji" && currentItem) {
+            currentItem.decrementCurrentIndex();
+        } else {
+            currentIndex = (currentIndex - 1 + count) % count;
+        }
+    }
+
+    function incrementCurrentIndexHorizontal(): void {
+        if (state === "emoji" && currentItem)
+            currentItem.incrementCurrentIndexHorizontal();
+    }
+
+    function decrementCurrentIndexHorizontal(): void {
+        if (state === "emoji" && currentItem)
+            currentItem.decrementCurrentIndexHorizontal();
+    }
 
     onStateChanged: {
         if (state === "scheme" || state === "variant")
             Schemes.reload();
+        else if (state === "emoji")
+            Emojis.load();
+        else if (state === "clipboard")
+            Clipboard.load();
     }
-
-    Component.onCompleted: displayText = search.text
 
     states: [
         State {
             name: "apps"
 
             PropertyChanges {
+                model.values: Apps.search(search.text)
                 root.delegate: appItem
             }
         },
@@ -103,6 +106,7 @@ StyledListView {
             name: "actions"
 
             PropertyChanges {
+                model.values: Actions.query(search.text)
                 root.delegate: actionItem
             }
         },
@@ -110,13 +114,31 @@ StyledListView {
             name: "calc"
 
             PropertyChanges {
+                model.values: [0]
                 root.delegate: calcItem
+            }
+        },
+        State {
+            name: "timer"
+
+            PropertyChanges {
+                model.values: [0]
+                root.delegate: timerItem
+            }
+        },
+        State {
+            name: "run"
+
+            PropertyChanges {
+                model.values: [0]
+                root.delegate: runItem
             }
         },
         State {
             name: "scheme"
 
             PropertyChanges {
+                model.values: Schemes.query(search.text)
                 root.delegate: schemeItem
             }
         },
@@ -124,7 +146,32 @@ StyledListView {
             name: "variant"
 
             PropertyChanges {
+                model.values: M3Variants.query(search.text)
                 root.delegate: variantItem
+            }
+        },
+        State {
+            name: "emoji"
+
+            PropertyChanges {
+                model.values: [0]
+                root.delegate: emojiItem
+            }
+        },
+        State {
+            name: "clipboard"
+
+            PropertyChanges {
+                model.values: Clipboard.query(search.text)
+                root.delegate: clipboardItem
+            }
+        },
+        State {
+            name: "pin"
+
+            PropertyChanges {
+                model.values: Apps.search(search.text.slice(GlobalConfig.launcher.actionPrefix.length + 4))
+                root.delegate: pinItem
             }
         }
     ]
@@ -150,16 +197,8 @@ StyledListView {
                 }
             }
             PropertyAction {
-                target: root
-                property: "delegate"
-                value: null
-            }
-            ScriptAction {
-                script: root.displayText = root.search.text
-            }
-            PropertyAction {
-                target: root
-                property: "delegate"
+                targets: [model, root]
+                properties: "values,delegate"
             }
             ParallelAnimation {
                 Anim {
@@ -251,7 +290,8 @@ StyledListView {
         id: appItem
 
         AppItem {
-            screenState: root.screenState
+            visibilities: root.visibilities
+            pinMode: false
         }
     }
 
@@ -272,6 +312,22 @@ StyledListView {
     }
 
     Component {
+        id: timerItem
+
+        TimerItem {
+            list: root
+        }
+    }
+
+    Component {
+        id: runItem
+
+        RunItem {
+            list: root
+        }
+    }
+
+    Component {
         id: schemeItem
 
         SchemeItem {
@@ -287,19 +343,27 @@ StyledListView {
         }
     }
 
-    Connections {
-        function onTextChanged() {
-            root.syncDisplayText();
-        }
+    Component {
+        id: emojiItem
 
-        target: root.search
+        EmojiItem {
+            list: root
+        }
     }
 
-    Connections {
-        function onLauncherChanged() {
-            root.syncDisplayText();
-        }
+    Component {
+        id: clipboardItem
 
-        target: root.screenState
+        ClipboardItem {
+            list: root
+        }
+    }
+
+    Component {
+        id: pinItem
+
+        PinItem {
+            list: root
+        }
     }
 }

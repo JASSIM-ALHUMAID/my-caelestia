@@ -27,7 +27,19 @@ Item {
 
     property alias currentName: popoutState.currentName
     property alias hasCurrent: popoutState.hasCurrent
+    property alias activeWindowToplevel: popoutState.activeWindowToplevel
+    property alias dockToplevel: popoutState.dockToplevel
+    property alias overflowEntries: popoutState.overflowEntries
+    property alias overflowBarConfig: popoutState.overflowBarConfig
+    property alias overflowVertical: popoutState.overflowVertical
+    property alias overflowEdge: popoutState.overflowEdge
+    property alias overflowVisibilities: popoutState.overflowVisibilities
+    property alias closeGrace: popoutState.closeGrace
     property real currentCenter
+
+    // Re-emitted from PopoutState so consumers holding the Wrapper (Interactions) can hook the
+    // moment a deferred close actually lands.
+    signal closed
 
     property string detachedMode
     property string queuedMode
@@ -56,8 +68,19 @@ Item {
         focus = true;
     }
 
+    // Hover-driven open/close, forwarded to PopoutState. `closeDeferred` lingers for closeGrace ms
+    // so the cursor can travel from the bar entry onto the popout without it vanishing.
+    function open(): void {
+        popoutState.open();
+    }
+
+    function closeDeferred(): void {
+        popoutState.closeDeferred();
+    }
+
+    // Explicit dismissal (escape, focus grab) - no grace.
     function close(): void {
-        hasCurrent = false;
+        popoutState.closeNow();
         detachedMode = "";
     }
 
@@ -88,6 +111,7 @@ Item {
         id: popoutState
 
         onDetachRequested: mode => root.detach(mode)
+        onClosed: root.closed()
     }
 
     HyprlandFocusGrab {
@@ -107,6 +131,11 @@ Item {
     Comp {
         id: content
 
+        // Stay loaded once shown: re-instantiating Content (all the popout loaders + the
+        // tray repeater) on every hover causes a visible hitch before the popout appears.
+        // Inner popouts are still lazily gated by currentName, so the resident cost is just
+        // the lightweight shell.
+        keepLoaded: true
         shouldBeActive: root.hasCurrent && !root.detachedMode
         anchors.fill: parent
 
@@ -123,7 +152,7 @@ Item {
 
         sourceComponent: WindowInfo {
             screen: root.screen
-            client: Hypr.activeToplevel
+            client: root.currentName === "dock" ? root.dockToplevel : root.activeWindowToplevel
         }
     }
 
@@ -143,7 +172,6 @@ Item {
 
                 anchors.fill: parent
                 nState.screen: root.screen
-                nState.animatingContainer: nexus.opacity < 1
                 nState.currentPageIdx: ["appearance", "network", "bluetooth", "audio"].indexOf(root.queuedMode)
                 onClose: root.close()
             }
@@ -170,9 +198,17 @@ Item {
         id: comp
 
         property bool shouldBeActive
+        // When true, stay loaded after the first activation (only opacity animates on
+        // hide) instead of unloading; avoids re-instantiation jank on the next show.
+        property bool keepLoaded: false
+        property bool everActive: false
 
-        active: false
+        // Base value; the "active" state forces this true while shown. For keepLoaded
+        // comps it latches true after the first load so the content never unloads.
+        active: comp.keepLoaded && comp.everActive
         opacity: 0
+
+        onLoaded: everActive = true
 
         // Makes the loader load on the same frame shouldBeActive becomes true, which ensures size is set
         states: State {

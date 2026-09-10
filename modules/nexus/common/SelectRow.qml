@@ -15,11 +15,11 @@ ConnectedRect {
     property alias active: splitButton.active
     property alias fallbackText: splitButton.fallbackText
     property alias fallbackIcon: splitButton.fallbackIcon
+    property alias fallbackIconSource: splitButton.fallbackIconSource
     property alias menuOnTop: splitButton.menuOnTop
 
     signal selected(item: MenuItem)
 
-    Layout.fillWidth: true
     implicitHeight: rowLayout.implicitHeight + rowLayout.anchors.margins * 2
     clip: false
     z: splitButton.expanded ? 1 : 0

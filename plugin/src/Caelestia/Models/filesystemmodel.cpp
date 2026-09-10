@@ -225,7 +225,7 @@ void FileSystemModel::watchDirIfRecursive(const QString& path) {
                 filters |= QDir::Hidden;
             }
 
-            QDirIterator iter(path, filters, QDirIterator::Subdirectories);
+            QDirIterator iter(path, filters, QDirIterator::Subdirectories | QDirIterator::FollowSymlinks);
             QStringList dirs;
             while (iter.hasNext()) {
                 dirs << iter.next();
@@ -292,7 +292,7 @@ void FileSystemModel::updateEntriesForDir(const QString& dir) {
     }
 
     auto future = QtConcurrent::run([=](QPromise<QPair<QSet<QString>, QSet<QString>>>& promise) {
-        const auto flags = recursive ? QDirIterator::Subdirectories : QDirIterator::NoIteratorFlags;
+        const auto flags = (recursive ? QDirIterator::Subdirectories : QDirIterator::NoIteratorFlags) | QDirIterator::FollowSymlinks;
 
         std::optional<QDirIterator> iter;
 
@@ -339,7 +339,8 @@ void FileSystemModel::updateEntriesForDir(const QString& dir) {
 
             QString path = iter->next();
 
-            if (filter == Images) {
+            if (filter == Images && !QDir::match(nameFilters, QFileInfo(path).fileName())) {
+                // Explicit name filters are authoritative; everything else must be a readable image
                 QImageReader reader(path);
                 if (!reader.canRead()) {
                     continue;
@@ -420,28 +421,39 @@ void FileSystemModel::applyChanges(const QSet<QString>& removedPaths, const QSet
         return compareEntries(a, b);
     });
 
-    // Batch insert new entries (each run lands contiguously before m_entries[row])
-    int i = 0;
-    while (i < newEntries.size()) {
-        const auto it = std::lower_bound(m_entries.begin(), m_entries.end(), newEntries[i],
-            [this](const FileSystemEntry* a, const FileSystemEntry* b) {
+    // Batch insert new entries
+    int insertStart = -1;
+    QList<FileSystemEntry*> batchItems;
+    for (const auto& entry : std::as_const(newEntries)) {
+        const auto it = std::lower_bound(
+            m_entries.begin(), m_entries.end(), entry, [this](const FileSystemEntry* a, const FileSystemEntry* b) {
                 return compareEntries(a, b);
             });
         const auto row = static_cast<int>(it - m_entries.begin());
 
-        // Extend the run while the next new entry still sorts before the existing element at row
-        int j = i + 1;
-        while (j < newEntries.size() && (row >= m_entries.size() || compareEntries(newEntries[j], m_entries[row]))) {
-            ++j;
-        }
+        if (insertStart == -1) {
+            insertStart = row;
+            batchItems << entry;
+        } else if (row == insertStart + batchItems.size()) {
+            batchItems << entry;
+        } else {
+            beginInsertRows(QModelIndex(), insertStart, insertStart + static_cast<int>(batchItems.size()) - 1);
+            for (int i = 0; i < batchItems.size(); ++i) {
+                m_entries.insert(insertStart + i, batchItems[i]);
+            }
+            endInsertRows();
 
-        beginInsertRows(QModelIndex(), row, row + (j - i) - 1);
-        for (int k = i; k < j; ++k) {
-            m_entries.insert(row + (k - i), newEntries[k]);
+            insertStart = row;
+            batchItems.clear();
+            batchItems << entry;
+        }
+    }
+    if (!batchItems.isEmpty()) {
+        beginInsertRows(QModelIndex(), insertStart, insertStart + static_cast<int>(batchItems.size()) - 1);
+        for (int i = 0; i < batchItems.size(); ++i) {
+            m_entries.insert(insertStart + i, batchItems[i]);
         }
         endInsertRows();
-
-        i = j;
     }
 
     emit entriesChanged();

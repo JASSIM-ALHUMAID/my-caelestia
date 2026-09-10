@@ -9,6 +9,11 @@ ButtonBase {
     property alias icon: label.text
     readonly property alias label: label
 
+    // Material Symbols' FILL axis. Only glyphs with an enclosed area (lock, bedtime) change
+    // shape when filled -- stroke-only ones (logout, cached) look the same either way -- so
+    // a set of mixed icons can need this forced to 0 to read as one style.
+    property real iconFill: !isToggle || internalChecked ? 1 : 0
+
     font: Tokens.font.icon.medium
     padding: type === IconButton.Text ? Tokens.padding.extraSmall / 2 : Tokens.padding.small
 
@@ -41,7 +46,7 @@ ButtonBase {
         anchors.verticalCenterOffset: 1 // AHHHHHHH material symbols whyyyy
         color: root.onColour
         fontStyle: root.font
-        fill: !root.isToggle || root.internalChecked ? 1 : 0
+        fill: root.iconFill
 
         Behavior on fill {
             Anim {

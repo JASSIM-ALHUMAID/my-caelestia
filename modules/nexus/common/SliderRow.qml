@@ -15,10 +15,13 @@ ConnectedRect {
     property alias label: label.text
     property alias valueLabel: valueLabel.text
     property real value
+    property real from: 0
+    property real to: 1.0
+    // Scroll-wheel increment. Defaults to audioIncrement since the original users were audio rows.
+    property real wheelStep: GlobalConfig.services.audioIncrement
 
     signal moved(value: real)
 
-    Layout.fillWidth: true
     implicitHeight: rowLayout.implicitHeight + rowLayout.anchors.margins + rowLayout.anchors.topMargin
 
     RowLayout {
@@ -33,7 +36,7 @@ ConnectedRect {
             id: icon
 
             color: Colours.palette.m3onSurfaceVariant
-            fontStyle: Tokens.font.icon.medium
+            font: Tokens.font.icon.medium
         }
 
         ColumnLayout {
@@ -62,11 +65,11 @@ ConnectedRect {
 
             CustomMouseArea {
                 function onWheel(event: WheelEvent): void {
-                    const step = GlobalConfig.services.audioIncrement;
+                    const step = root.wheelStep;
                     if (event.angleDelta.y > 0)
-                        root.moved(Math.min(1, root.value + step));
+                        root.moved(Math.min(root.to, root.value + step));
                     else if (event.angleDelta.y < 0)
-                        root.moved(Math.max(0, root.value - step));
+                        root.moved(Math.max(root.from, root.value - step));
                 }
 
                 Layout.fillWidth: true
@@ -80,6 +83,8 @@ ConnectedRect {
 
                     radius: Tokens.rounding.small
                     value: root.value
+                    from: root.from
+                    to: root.to
                     enabled: root.enabled
                     onInteraction: v => root.moved(v)
                 }

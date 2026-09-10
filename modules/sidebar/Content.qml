@@ -8,7 +8,7 @@ Item {
     id: root
 
     required property Props props
-    required property ScreenState screenState
+    required property DrawerVisibilities visibilities
 
     ColumnLayout {
         id: layout
@@ -24,10 +24,8 @@ Item {
             color: Colours.tPalette.m3surfaceContainerLow
 
             NotifDock {
-                objectName: "sidebarNotifications"
-
                 props: root.props
-                screenState: root.screenState
+                visibilities: root.visibilities
             }
         }
 

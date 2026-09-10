@@ -175,7 +175,6 @@ class DashboardTokens : public ConfigObject {
     Q_OBJECT
     QML_ANONYMOUS
 
-    CONFIG_PROPERTY(int, tabIndicatorHeight, 3)
     CONFIG_PROPERTY(int, tabIndicatorSpacing, 5)
     CONFIG_PROPERTY(int, userWidth, 340)
     CONFIG_PROPERTY(int, logoSize, 30)
@@ -213,6 +212,12 @@ class LauncherTokens : public ConfigObject {
     CONFIG_PROPERTY(int, itemHeight, 57)
     CONFIG_PROPERTY(int, wallpaperWidth, 280)
     CONFIG_PROPERTY(int, wallpaperHeight, 200)
+    CONFIG_PROPERTY(int, gridItemWidth, 110)
+    CONFIG_PROPERTY(int, gridItemHeight, 104)
+
+    // Multiplier on the derived app-icon size in both launcher layouts. Rows and tiles grow
+    // to fit when the icon outgrows its box, so 1.0 leaves both layouts exactly as they were.
+    CONFIG_PROPERTY(qreal, iconScale, 1.0)
 
 public:
     explicit LauncherTokens(QObject* parent = nullptr)
@@ -285,7 +290,7 @@ class LockTokens : public ConfigObject {
     CONFIG_PROPERTY(qreal, heightMult, 0.7)
     CONFIG_PROPERTY(qreal, ratio, 16.0 / 9.0)
     CONFIG_PROPERTY(int, centerWidth, 600)
-    CONFIG_PROPERTY(int, showWeatherDetailsHeight, 550)
+    CONFIG_PROPERTY(int, showWeatherDetailsHeight, 500)
     CONFIG_PROPERTY(int, showForecastHeight, 975)
     CONFIG_PROPERTY(int, forecastItemWidth, 51)
     CONFIG_PROPERTY(int, largeLogoWidth, 320)
@@ -320,12 +325,6 @@ class NexusTokens : public ConfigObject {
     CONFIG_PROPERTY(int, minWidth, 800)
     CONFIG_PROPERTY(int, minHeight, 500)
     CONFIG_PROPERTY(int, maxNavWidth, 600)
-    CONFIG_PROPERTY(int, maxContentWidth, 800)
-    CONFIG_PROPERTY(int, popupWidth, 300)
-    CONFIG_PROPERTY(int, minPopupHeight, 200)
-    CONFIG_PROPERTY(int, maxPopupHeight, 800)
-    CONFIG_PROPERTY(int, networkShowEthDetailWidth, 620)
-    CONFIG_PROPERTY(int, networkShowVpnDetailWidth, 620)
     CONFIG_PROPERTY(int, maxDialogWidth, 400)
     CONFIG_PROPERTY(int, maxDialogHeight, 600)
     CONFIG_PROPERTY(int, textFieldWidth, 250)

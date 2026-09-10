@@ -1,0 +1,8 @@
+{
+  "wallpaper": {
+    "postHook": "sudo /usr/share/sddm/themes/caelestia/scripts/sync.sh --posthook && python3 ~/.config/caelestia/scripts/wezterm-theme.py && python3 ~/.config/caelestia/scripts/starship-theme.py && python3 ~/.config/caelestia/scripts/gtk-theme.py && PREFIX=/usr/local bash $HOME/.local/share/caelestia-grub-new/scripts/sync.sh && bash $HOME/.local/share/caelestia-grub/scripts/sync.sh"
+  },
+  "theme": {
+    "postHook": "sudo /usr/share/sddm/themes/caelestia/scripts/sync.sh --posthook && python3 ~/.config/caelestia/scripts/wezterm-theme.py && python3 ~/.config/caelestia/scripts/starship-theme.py && python3 ~/.config/caelestia/scripts/gtk-theme.py && PREFIX=/usr/local bash $HOME/.local/share/caelestia-grub-new/scripts/sync.sh && bash $HOME/.local/share/caelestia-grub/scripts/sync.sh"
+  }
+}

@@ -1,0 +1,131 @@
+/* =============================================================================
+   libadwaita named colours, mapped from the Caelestia M3 scheme.
+
+   Replaces caelestia-cli's own templates/gtk.css, which only defines 20 names
+   and ends by aliasing theme_selected_fg_color to an undefined colour name, so
+   GTK discards that declaration. Rendered by
+   ~/.config/caelestia/scripts/gtk-theme.py; placeholders use caelestia's
+   `{{ $<name> }}` convention (literal, exactly one space each side).
+   ============================================================================= */
+
+/* -----------------------------------------------------------------------------
+   Accent
+   -------------------------------------------------------------------------- */
+
+@define-color accent_color {{ $primary }};
+@define-color accent_bg_color {{ $primary }};
+@define-color accent_fg_color {{ $onPrimary }};
+
+/* -----------------------------------------------------------------------------
+   Window & view
+   -------------------------------------------------------------------------- */
+
+@define-color window_bg_color {{ $background }};
+@define-color window_fg_color {{ $onBackground }};
+@define-color view_bg_color {{ $surface }};
+@define-color view_fg_color {{ $onSurface }};
+
+/* -----------------------------------------------------------------------------
+   Headerbar
+   -------------------------------------------------------------------------- */
+
+@define-color headerbar_bg_color {{ $surfaceContainer }};
+@define-color headerbar_fg_color {{ $onSurface }};
+@define-color headerbar_border_color {{ $surfaceContainer }};
+@define-color headerbar_backdrop_color {{ $surfaceContainer }};
+@define-color headerbar_shade_color rgba(0, 0, 0, 0.12);
+@define-color headerbar_darker_shade_color rgba(0, 0, 0, 0.12);
+
+/* -----------------------------------------------------------------------------
+   Sidebars
+
+   Nautilus and Thunar both lean on these. Upstream aliased every sidebar name
+   to @window_bg_color, which flattens the sidebar into the window; stepping it
+   to surfaceContainerLow restores the tier separation the shell itself uses.
+   -------------------------------------------------------------------------- */
+
+@define-color sidebar_bg_color {{ $surfaceContainerLow }};
+@define-color sidebar_fg_color {{ $onSurface }};
+@define-color sidebar_border_color {{ $surfaceContainerLow }};
+@define-color sidebar_backdrop_color {{ $surfaceContainerLow }};
+@define-color sidebar_shade_color rgba(0, 0, 0, 0.12);
+
+@define-color secondary_sidebar_bg_color {{ $surfaceContainer }};
+@define-color secondary_sidebar_fg_color {{ $onSurface }};
+@define-color secondary_sidebar_border_color {{ $surfaceContainer }};
+@define-color secondary_sidebar_backdrop_color {{ $surfaceContainer }};
+@define-color secondary_sidebar_shade_color rgba(0, 0, 0, 0.12);
+
+/* -----------------------------------------------------------------------------
+   Raised surfaces
+   -------------------------------------------------------------------------- */
+
+@define-color card_bg_color {{ $surfaceContainerHigh }};
+@define-color card_fg_color {{ $onSurface }};
+@define-color card_shade_color rgba(0, 0, 0, 0.12);
+
+@define-color dialog_bg_color {{ $surfaceContainerHigh }};
+@define-color dialog_fg_color {{ $onSurface }};
+
+@define-color popover_bg_color {{ $surfaceContainerHigh }};
+@define-color popover_fg_color {{ $onSurface }};
+@define-color popover_shade_color rgba(0, 0, 0, 0.12);
+
+@define-color thumbnail_bg_color {{ $surfaceContainerHigh }};
+@define-color thumbnail_fg_color {{ $onSurface }};
+
+/* -----------------------------------------------------------------------------
+   Status
+
+   M3 has no warning role, so tertiary stands in for it.
+   -------------------------------------------------------------------------- */
+
+@define-color destructive_color {{ $error }};
+@define-color destructive_bg_color {{ $error }};
+@define-color destructive_fg_color {{ $onError }};
+
+@define-color error_color {{ $error }};
+@define-color error_bg_color {{ $error }};
+@define-color error_fg_color {{ $onError }};
+
+@define-color success_color {{ $success }};
+@define-color success_bg_color {{ $success }};
+@define-color success_fg_color {{ $onSuccess }};
+
+@define-color warning_color {{ $tertiary }};
+@define-color warning_bg_color {{ $tertiary }};
+@define-color warning_fg_color {{ $onTertiary }};
+
+/* -----------------------------------------------------------------------------
+   Shared
+   -------------------------------------------------------------------------- */
+
+@define-color shade_color rgba(0, 0, 0, 0.32);
+@define-color scrim_color rgba(0, 0, 0, 0.55);
+@define-color borders {{ $outlineVariant }};
+
+/* -----------------------------------------------------------------------------
+   adw-gtk3 legacy names — GTK3 apps (Thunar) read these, not the ones above.
+   -------------------------------------------------------------------------- */
+
+@define-color theme_bg_color {{ $background }};
+@define-color theme_fg_color {{ $onBackground }};
+@define-color theme_base_color {{ $surface }};
+@define-color theme_text_color {{ $onSurface }};
+@define-color theme_selected_bg_color alpha(@accent_color, 0.15);
+@define-color theme_selected_fg_color @accent_color;
+@define-color insensitive_bg_color {{ $surfaceContainer }};
+@define-color insensitive_fg_color {{ $outline }};
+@define-color insensitive_base_color {{ $surface }};
+
+/* -----------------------------------------------------------------------------
+   Per-app stylesheets.
+
+   Kept last, matching upstream's ordering. Both files carry literal hex
+   substituted at render time, so nothing here depends on @define-color
+   resolution order. thunar.css is written by caelestia-cli's apply_gtk();
+   nautilus.css by gtk-theme.py alongside this file.
+   -------------------------------------------------------------------------- */
+
+@import "thunar.css";
+@import "nautilus.css";

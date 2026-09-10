@@ -1,0 +1,94 @@
+# ======================== CONFIG FOR MINIMALISTV2 ===========================
+[General]
+# ============================================================================
+# TYPOGRAPHY
+# ============================================================================
+# Font Family
+fontFamily="Rubik"
+
+# Font Size
+FontSize=11
+
+# Avatar Size
+AvatarSize=120
+
+# ============================================================================
+# BORDER RADIUS (roundness)
+# ============================================================================
+# UI Elements (inputs, combo boxes, toast)
+elementRadius=25
+
+# Login Card
+cardRadius=75
+
+# ============================================================================
+# VISUAL EFFECTS — CARD
+# ============================================================================
+# Card border [true | false]
+cardBorder=false
+
+# Card frosted glass blur [true | false]
+cardBlurEnabled=true
+
+# Card blur strength [0.0 to 1.0]
+cardBlurStrength=0.80
+
+# Outer card opacity [0.50 to 1] (minimum 0.50 for visibility)
+outerCardOpacity=0.80
+
+# Inner card opacity [0.15 to 1] (minimum 0.15 for visibility)
+innerCardOpacity=0.40
+
+# Element opacity — inputs, dropdowns [0.1 to 1] (minimum 0.1 for visibility)
+elementOpacity=0.50
+
+# Card drop shadows [true | false]
+dropShadows=true
+
+# ============================================================================
+# VISUAL EFFECTS — BACKGROUND
+# ============================================================================
+# Background blur [true | false]
+blurEnabled=true
+
+# Background blur strength [0.0 to 1.0]
+blurStrength=0.50
+
+# Background overlay opacity [0 to 1]
+overlayOpacity=0.4
+
+# ============================================================================
+# DEBUG
+# ============================================================================
+# Debug mode (enable debug keyboard shortcuts) [true | false]
+debugMode=false
+
+# ============================================================================
+# COLOR SCHEME
+# ============================================================================
+# Do not touch these! (auto-synced by Caelestia)
+mPrimary=#{{ primary.hex }}
+mOnPrimary=#{{ onPrimary.hex }}
+
+mSecondary=#{{ secondary.hex }}
+mOnSecondary=#{{ onSecondary.hex }}
+
+mTertiary=#{{ tertiary.hex }}
+mOnTertiary=#{{ onTertiary.hex }}
+
+mError=#{{ error.hex }}
+mOnError=#{{ onError.hex }}
+
+mSurface=#{{ surface.hex }}
+mOnSurface=#{{ onSurface.hex }}
+
+mSurfaceVariant=#{{ surfaceVariant.hex }}
+mOnSurfaceVariant=#{{ onSurfaceVariant.hex }}
+
+mSurfaceContainer=#{{ surfaceContainer.hex }}
+
+mOutline=#{{ outline.hex }}
+mShadow=#{{ shadow.hex }}
+
+mHover=#{{ primary.hex }}
+mOnHover=#{{ onPrimary.hex }}

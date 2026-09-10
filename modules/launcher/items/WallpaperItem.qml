@@ -6,12 +6,13 @@ import qs.components
 import qs.components.effects
 import qs.components.images
 import qs.services
+import qs.utils
 
 Item {
     id: root
 
     required property FileSystemEntry modelData
-    required property ScreenState screenState
+    required property DrawerVisibilities visibilities
 
     scale: 0.5
     opacity: 0
@@ -20,6 +21,7 @@ Item {
     Component.onCompleted: {
         scale = Qt.binding(() => PathView.isCurrentItem ? 1 : PathView.onPath ? 0.8 : 0);
         opacity = Qt.binding(() => PathView.onPath ? 1 : 0);
+        Wallpapers.ensureVideoFrame(modelData.path);
     }
 
     implicitWidth: image.width + Tokens.padding.medium * 2
@@ -28,8 +30,9 @@ Item {
     StateLayer {
         radius: Tokens.rounding.large
         onClicked: {
+            Wallpapers.stopPreview();
             Wallpapers.setWallpaper(root.modelData.path);
-            root.screenState.launcher = false;
+            root.visibilities.launcher = false;
         }
     }
 
@@ -59,18 +62,32 @@ Item {
 
         MaterialIcon {
             anchors.centerIn: parent
-            text: "image"
+            text: Images.isValidVideoByName(root.modelData.path) ? "movie" : "image"
             color: Colours.tPalette.m3outline
             fontStyle: Tokens.font.icon.builders.extraLarge.scale(2).weight(Font.DemiBold).build()
         }
 
         CachingImage {
             anchors.fill: parent
-            path: root.modelData.path
+            path: {
+                Wallpapers.videoFrames;
+                return Wallpapers.thumbnailFor(root.modelData.path);
+            }
             smooth: !root.PathView.view.moving
             sourceSize: {
                 const dpr = (QsWindow.window as QsWindow)?.devicePixelRatio ?? 1;
                 return Qt.size(image.implicitWidth * dpr, image.implicitHeight * dpr);
+            }
+        }
+
+        Loader {
+            anchors.fill: parent
+            asynchronous: true
+            active: root.visibilities.launcher && root.PathView.isCurrentItem && Images.isValidVideoByName(root.modelData.path)
+
+            sourceComponent: WallpaperVideoPreview {
+                path: root.modelData.path
+                active: true
             }
         }
     }

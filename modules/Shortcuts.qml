@@ -1,7 +1,9 @@
+import "launcher/services" as LauncherServices
 import QtQuick
 import Quickshell
 import Quickshell.Io
 import Caelestia
+import Caelestia.Config
 import qs.components.misc
 import qs.services
 import qs.modules.nexus
@@ -11,6 +13,10 @@ Scope {
 
     property bool launcherInterrupted
     readonly property bool hasFullscreen: Hypr.focusedWorkspace?.toplevels.values.some(t => t.lastIpcObject.fullscreen > 1) ?? false
+
+    // Force-load the lazy KeybindApplier singleton so keybinds.json is
+    // actually applied at startup — nothing else references it
+    Component.onCompleted: KeybindApplier.init()
 
     // qmllint disable unresolved-type
     CustomShortcut {
@@ -28,7 +34,7 @@ Scope {
         onPressed: {
             if (root.hasFullscreen)
                 return;
-            const v = ShellState.forActive();
+            const v = Visibilities.getForActive();
             v.launcher = v.dashboard = v.osd = v.utilities = !(v.launcher || v.dashboard || v.osd || v.utilities);
         }
     }
@@ -39,10 +45,32 @@ Scope {
         name: "dashboard"
         description: "Toggle dashboard"
         onPressed: {
-            if (root.hasFullscreen)
+            if (root.hasFullscreen && Config.dashboard.fullscreen === "off")
                 return;
-            const screenState = ShellState.forActive();
-            screenState.dashboard = !screenState.dashboard;
+            const visibilities = Visibilities.getForActive();
+            visibilities.dashboard = !visibilities.dashboard;
+        }
+    }
+
+    // qmllint disable unresolved-type
+    CustomShortcut {
+        // qmllint enable unresolved-type
+        name: "dock"
+        description: "Toggle dock"
+        onPressed: {
+            const visibilities = Visibilities.getForActive();
+            visibilities.dock = !visibilities.dock;
+        }
+    }
+
+    // qmllint disable unresolved-type
+    CustomShortcut {
+        // qmllint enable unresolved-type
+        name: "taskbar"
+        description: "Toggle taskbar"
+        onPressed: {
+            const visibilities = Visibilities.getForActive();
+            visibilities.bar = !visibilities.bar;
         }
     }
 
@@ -54,8 +82,8 @@ Scope {
         onPressed: {
             if (root.hasFullscreen)
                 return;
-            const screenState = ShellState.forActive();
-            screenState.session = !screenState.session;
+            const visibilities = Visibilities.getForActive();
+            visibilities.session = !visibilities.session;
         }
     }
 
@@ -66,9 +94,9 @@ Scope {
         description: "Toggle launcher"
         onPressed: root.launcherInterrupted = false
         onReleased: {
-            if (!root.launcherInterrupted && !root.hasFullscreen) {
-                const screenState = ShellState.forActive();
-                screenState.launcher = !screenState.launcher;
+            if (!root.launcherInterrupted && !(root.hasFullscreen && Config.launcher.fullscreen === "off")) {
+                const visibilities = Visibilities.getForActive();
+                visibilities.launcher = !visibilities.launcher;
             }
             root.launcherInterrupted = false;
         }
@@ -85,13 +113,64 @@ Scope {
     // qmllint disable unresolved-type
     CustomShortcut {
         // qmllint enable unresolved-type
+        name: "clipboard"
+        description: "Toggle clipboard manager"
+        onPressed: root.launcherInterrupted = false
+        onReleased: {
+            if (!root.launcherInterrupted && !(root.hasFullscreen && Config.launcher.fullscreen === "off")) {
+                const visibilities = Visibilities.getForActive();
+                if (visibilities.launcher) {
+                    visibilities.launcher = false;
+                } else {
+                    LauncherServices.LauncherIpc.text = `${GlobalConfig.launcher.actionPrefix}clip `;
+                    visibilities.launcher = true;
+                }
+            }
+            root.launcherInterrupted = false;
+        }
+    }
+
+    // qmllint disable unresolved-type
+    CustomShortcut {
+        // qmllint enable unresolved-type
+        name: "emoji"
+        description: "Toggle emoji picker"
+        onPressed: root.launcherInterrupted = false
+        onReleased: {
+            if (!root.launcherInterrupted && !(root.hasFullscreen && Config.launcher.fullscreen === "off")) {
+                const visibilities = Visibilities.getForActive();
+                if (visibilities.launcher) {
+                    visibilities.launcher = false;
+                } else {
+                    LauncherServices.LauncherIpc.text = `${GlobalConfig.launcher.actionPrefix}emoji `;
+                    visibilities.launcher = true;
+                }
+            }
+            root.launcherInterrupted = false;
+        }
+    }
+
+    // qmllint disable unresolved-type
+    CustomShortcut {
+        // qmllint enable unresolved-type
+        name: "clearClipboard"
+        description: "Clear clipboard history"
+        onPressed: {
+            LauncherServices.Clipboard.clear();
+            Toaster.toast(qsTr("Clipboard cleared"), qsTr("All clipboard history has been deleted"), "delete_sweep");
+        }
+    }
+
+    // qmllint disable unresolved-type
+    CustomShortcut {
+        // qmllint enable unresolved-type
         name: "sidebar"
         description: "Toggle sidebar"
         onPressed: {
             if (root.hasFullscreen)
                 return;
-            const screenState = ShellState.forActive();
-            screenState.sidebar = !screenState.sidebar;
+            const visibilities = Visibilities.getForActive();
+            visibilities.sidebar = !visibilities.sidebar;
         }
     }
 
@@ -103,33 +182,30 @@ Scope {
         onPressed: {
             if (root.hasFullscreen)
                 return;
-            const screenState = ShellState.forActive();
-            screenState.utilities = !screenState.utilities;
+            const visibilities = Visibilities.getForActive();
+            visibilities.utilities = !visibilities.utilities;
         }
     }
 
     IpcHandler {
         function toggle(drawer: string): void {
             if (list().split("\n").includes(drawer)) {
-                if (root.hasFullscreen && ["launcher", "session", "dashboard"].includes(drawer))
+                if (root.hasFullscreen && (
+                    (Config.launcher.fullscreen === "off" && drawer === "launcher") ||
+                    drawer === "session" ||
+                    (drawer === "dashboard" && Config.dashboard.fullscreen === "off")
+                ))
                     return;
-                const screenState = ShellState.forActive();
-                screenState[drawer] = !screenState[drawer];
+                const visibilities = Visibilities.getForActive();
+                visibilities[drawer] = !visibilities[drawer];
             } else {
                 console.warn(lc, `Drawer "${drawer}" does not exist`);
             }
         }
 
         function list(): string {
-            const screenState = ShellState.forActive();
-            return Object.keys(screenState).filter(k => typeof screenState[k] === "boolean").join("\n");
-        }
-
-        function isOpen(drawer: string): string {
-            const screenState = ShellState.forActive();
-            if (typeof screenState[drawer] !== "boolean")
-                return "unknown";
-            return screenState[drawer] ? "1" : "0";
+            const visibilities = Visibilities.getForActive();
+            return Object.keys(visibilities).filter(k => typeof visibilities[k] === "boolean").join("\n");
         }
 
         target: "drawers"

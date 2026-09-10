@@ -11,15 +11,51 @@ Item {
     id: root
 
     required property var content
-    required property ScreenState screenState
+    required property DrawerVisibilities visibilities
     required property var panels
     required property real maxHeight
-    required property SearchBar search
+    required property StyledTextField search
     required property int padding
     required property int rounding
 
-    readonly property bool showWallpapers: search.text.startsWith(`${GlobalConfig.launcher.actionPrefix}wallpaper `)
-    readonly property var currentList: showWallpapers ? wallpaperList.item : appList.item // Can be either ListView or PathView, so can't type properly
+    // Single source of truth for which results view search.text selects — previously computed
+    // independently here (just the wallpaper prefix) and again in AppList (every other
+    // prefix), which could disagree. AppList takes this as `listState` and uses it verbatim
+    // as its own `state:`.
+    readonly property string listState: {
+        const text = search.text;
+        const prefix = GlobalConfig.launcher.actionPrefix;
+        if (text.startsWith(prefix)) {
+            if (GlobalConfig.launcher.enableDangerousActions && text.startsWith(`${prefix}run `))
+                return "run";
+            if (text.startsWith(`${prefix}wallpaper `))
+                return "wallpapers";
+
+            for (const action of ["calc", "timer", "scheme", "variant", "emoji", "clip", "pin"])
+                if (text.startsWith(`${prefix}${action} `))
+                    return action === "clip" ? "clipboard" : action;
+
+            return "actions";
+        }
+
+        return "apps";
+    }
+    readonly property bool showWallpapers: listState === "wallpapers"
+    // Grid layout only applies to the app and pin lists; everything else (actions, calc,
+    // emoji, etc.) stays on the row-based AppList regardless of Config.launcher.appLayout.
+    readonly property bool useGrid: Config.launcher.appLayout === "grid" && (listState === "apps" || listState === "pin")
+    readonly property var currentList: showWallpapers ? wallpaperList.item : (useGrid ? gridList.item : appList.item) // Can be ListView, GridView or PathView, so can't type properly
+    readonly property real contentImplicitHeight: useGrid ? gridList.implicitHeight : appList.implicitHeight
+    // Same growth AppGrid applies to its tiles. Duplicated rather than read off gridList
+    // because this is consumed inside a PropertyChanges, where the loader may be inactive.
+    readonly property int gridTileWidth: {
+        const base = Math.round(Tokens.sizes.launcher.gridItemWidth * 0.4);
+        return Tokens.sizes.launcher.gridItemWidth + Math.max(0, Math.round(base * Tokens.sizes.launcher.iconScale) - base);
+    }
+    // Resolved here rather than inside the PropertyChanges below: the Config attached property
+    // needs a screen, and inside a State it resolves against the QQuickState instead of a
+    // visual item, so it reads back undefined (same reason Tokens is reached via `root.` there).
+    readonly property real appsWidth: useGrid ? Config.launcher.gridColumns * gridTileWidth : Tokens.sizes.launcher.itemWidth
     property string animState: showWallpapers ? "wallpapers" : "apps"
 
     anchors.horizontalCenter: parent.horizontalCenter
@@ -33,9 +69,10 @@ Item {
             name: "apps"
 
             PropertyChanges {
-                root.implicitWidth: root.Tokens.sizes.launcher.itemWidth
-                root.implicitHeight: Math.min(root.maxHeight, appList.implicitHeight > 0 ? appList.implicitHeight : empty.implicitHeight)
-                appList.active: true
+                root.implicitWidth: root.appsWidth
+                root.implicitHeight: Math.min(root.maxHeight, root.contentImplicitHeight > 0 ? root.contentImplicitHeight : empty.implicitHeight)
+                appList.active: !root.useGrid
+                gridList.active: root.useGrid
             }
 
             AnchorChanges {
@@ -82,10 +119,23 @@ Item {
         anchors.fill: parent
 
         sourceComponent: AppList {
-            objectName: "launcherAppList"
-
             search: root.search
-            screenState: root.screenState
+            visibilities: root.visibilities
+            listState: root.listState
+        }
+    }
+
+    Loader {
+        id: gridList
+
+        active: false
+
+        anchors.fill: parent
+
+        sourceComponent: AppGrid {
+            search: root.search
+            visibilities: root.visibilities
+            listState: root.listState
         }
     }
 
@@ -100,10 +150,8 @@ Item {
         anchors.horizontalCenter: parent.horizontalCenter
 
         sourceComponent: WallpaperList {
-            objectName: "launcherWallpaperList"
-
             search: root.search
-            screenState: root.screenState
+            visibilities: root.visibilities
             panels: root.panels
             content: root.content
         }
@@ -139,7 +187,7 @@ Item {
             }
 
             StyledText {
-                text: root.state === "wallpapers" && Wallpapers.list.length === 0 ? qsTr("Try putting some wallpapers in %1").arg(Paths.shortenHome(Paths.wallsdir)) : qsTr("Try searching for something else")
+                text: root.state === "wallpapers" && Wallpapers.list.length === 0 ? qsTr("Try putting some wallpapers in %1").arg(Paths.shortenHome(Wallpapers.wallpaperDirs[0] ?? "~/Pictures/Wallpapers")) : qsTr("Try searching for something else")
                 color: Colours.palette.m3onSurfaceVariant
                 font: Tokens.font.body.medium
             }
@@ -157,13 +205,13 @@ Item {
     }
 
     Behavior on implicitWidth {
-        enabled: root.screenState.launcher
+        enabled: root.visibilities.launcher
 
         Anim {}
     }
 
     Behavior on implicitHeight {
-        enabled: root.screenState.launcher
+        enabled: root.visibilities.launcher
 
         Anim {}
     }

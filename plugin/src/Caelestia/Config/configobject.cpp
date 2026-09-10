@@ -1,29 +1,67 @@
 #include "configobject.hpp"
 
 #include <qjsonarray.h>
+#include <qjsonvalue.h>
+#include <qloggingcategory.h>
 #include <qmetaobject.h>
+#include <qsequentialiterable.h>
 #include <qstringlist.h>
 #include <qvariant.h>
 
+#include <algorithm>
+
 namespace caelestia::config {
 
-ConfigObject::ConfigObject(QObject* parent)
-    : ConfigNode(parent) {}
+Q_LOGGING_CATEGORY(lcConfig, "caelestia.config", QtInfoMsg)
 
-void ConfigObject::loadFromJson(const QJsonValue& json) {
-    const auto obj = json.toObject();
+// ConfigObject
+
+ConfigObject::ConfigObject(QObject* parent)
+    : QObject(parent) {}
+
+// QSequentialIterable is deprecated in 6.15 in favour of QMetaSequence, but its replacement
+// QIterable<QMetaSequence> exposes neither a QVariant conversion nor valueMetaType(), which
+// are exactly what's needed to inspect a list's element type generically. Revisit when Qt
+// offers an equivalent.
+QT_WARNING_PUSH
+QT_WARNING_DISABLE_DEPRECATED
+
+bool ConfigObject::isConfigObjectList(const QVariant& value) {
+    if (!value.canConvert<QSequentialIterable>())
+        return false;
+
+    const auto elem = value.value<QSequentialIterable>().valueMetaType();
+    if (!elem.flags().testFlag(QMetaType::PointerToQObject))
+        return false;
+
+    const auto* const meta = elem.metaObject();
+    return meta && meta->inherits(&ConfigObject::staticMetaObject);
+}
+
+QList<ConfigObject*> ConfigObject::asConfigObjectList(const QVariant& value) {
+    QList<ConfigObject*> entries;
+
+    if (!isConfigObjectList(value))
+        return entries;
+
+    for (const auto& item : value.value<QSequentialIterable>())
+        if (auto* const entry = item.value<ConfigObject*>())
+            entries.append(entry);
+
+    return entries;
+}
+
+QT_WARNING_POP
+
+void ConfigObject::loadFromJson(const QJsonObject& obj) {
     const auto* meta = metaObject();
 
     qCDebug(lcConfig) << "Loading JSON into" << meta->className() << "with" << obj.keys().size()
                       << "keys:" << obj.keys();
 
-    QSet<QString> known;
-
     for (int i = basePropertyOffset(); i < meta->propertyCount(); ++i) {
         auto prop = meta->property(i);
         const auto key = QString::fromUtf8(prop.name());
-
-        known.insert(key);
 
         if (!obj.contains(key))
             continue;
@@ -34,10 +72,37 @@ void ConfigObject::loadFromJson(const QJsonValue& json) {
 
         const auto jsonVal = obj.value(key);
 
-        // Recurse into child nodes (sub-objects and lists)
-        if (auto* const node = prop.read(this).value<ConfigNode*>()) {
-            qCDebug(lcConfig) << "  Recursing into" << key;
-            node->loadFromJson(jsonVal);
+        // Recurse into sub-objects
+        auto current = prop.read(this);
+        auto* subObj = current.value<ConfigObject*>();
+
+        if (subObj) {
+            qCDebug(lcConfig) << "  Recursing into sub-object" << key;
+            subObj->loadFromJson(jsonVal.toObject());
+            continue;
+        }
+
+        // Rosters of config objects (e.g. session.items). The entries themselves are built in
+        // C++; the file only overrides fields on them. Match by `id` rather than position so
+        // a partial or reordered file still applies to the right entry.
+        if (isConfigObjectList(current)) {
+            const auto entries = asConfigObjectList(current);
+            for (const auto& entryVal : jsonVal.toArray()) {
+                const auto entryObj = entryVal.toObject();
+                const auto id = entryObj.value(QStringLiteral("id")).toString();
+                const auto it = std::find_if(entries.cbegin(), entries.cend(),
+                    [&id](const ConfigObject* entry) { return entry->property("id").toString() == id; });
+
+                if (it == entries.cend()) {
+                    qCWarning(lcConfig, "Unknown entry '%s' in list '%s', ignoring", qUtf8Printable(id),
+                        qUtf8Printable(propertyPath(key)));
+                    continue;
+                }
+
+                (*it)->loadFromJson(entryObj);
+            }
+            m_loadedKeys.insert(key);
+            qCDebug(lcConfig) << "  Loaded" << jsonVal.toArray().size() << "entries into" << key;
             continue;
         }
 
@@ -62,17 +127,9 @@ void ConfigObject::loadFromJson(const QJsonValue& json) {
         m_loadedKeys.insert(key);
         qCDebug(lcConfig) << "  Loaded" << key << "=" << jsonVal.toVariant();
     }
-
-    m_extras = {};
-    for (auto it = obj.begin(); it != obj.end(); ++it) {
-        if (!known.contains(it.key())) {
-            m_extras.insert(it.key(), it.value());
-            qCDebug(lcConfig) << "  Keeping unknown key" << it.key();
-        }
-    }
 }
 
-QJsonValue ConfigObject::toJson() const {
+QJsonObject ConfigObject::toJsonObject() const {
     QJsonObject obj;
     const auto* meta = metaObject();
 
@@ -89,11 +146,36 @@ QJsonValue ConfigObject::toJson() const {
 
         const auto value = prop.read(this);
 
-        // Recurse into child nodes, they decide if they hold anything worth writing
-        if (auto* const node = value.value<ConfigNode*>()) {
-            const auto childJson = node->toJson();
-            if (!childJson.isUndefined())
-                obj.insert(key, childJson);
+        // Recurse into sub-objects — include only if they have loaded keys
+        if (value.canView<ConfigObject*>()) {
+            auto* const subObj = value.value<ConfigObject*>();
+            if (subObj) {
+                auto subJson = subObj->toJsonObject();
+                if (!subJson.isEmpty())
+                    obj.insert(key, subJson);
+            }
+            continue;
+        }
+
+        // Rosters of config objects, mirroring loadFromJson. Like sub-objects these are
+        // emitted whenever an entry has something to say, rather than gated on the list
+        // property itself being assigned — entries are mutated in place, so the list never
+        // changes. `id` is always carried so entries can be matched back on load.
+        if (isConfigObjectList(value)) {
+            QJsonArray arr;
+            for (const auto* const entry : asConfigObjectList(value)) {
+                auto entryJson = entry->toJsonObject();
+                if (entryJson.isEmpty())
+                    continue;
+
+                const auto id = entry->property("id");
+                if (id.isValid())
+                    entryJson.insert(QStringLiteral("id"), id.toString());
+
+                arr.append(entryJson);
+            }
+            if (!arr.isEmpty())
+                obj.insert(key, arr);
             continue;
         }
 
@@ -121,81 +203,38 @@ QJsonValue ConfigObject::toJson() const {
         obj.insert(key, QJsonValue::fromVariant(value));
     }
 
-    for (auto it = m_extras.begin(); it != m_extras.end(); ++it)
-        obj.insert(it.key(), it.value());
-
-    if (obj.isEmpty())
-        return QJsonValue::Undefined;
-
     return obj;
 }
 
 void ConfigObject::clearLoadedKeys() {
     m_loadedKeys.clear();
-    m_extras = {};
 
     const auto* meta = metaObject();
     for (int i = basePropertyOffset(); i < meta->propertyCount(); ++i) {
         auto prop = meta->property(i);
         if (isGlobalOnly(QString::fromUtf8(prop.name())))
             continue;
-
-        if (auto* const node = prop.read(this).value<ConfigNode*>())
-            node->clearLoadedKeys();
+        auto value = prop.read(this);
+        auto* subObj = value.value<ConfigObject*>();
+        if (subObj) {
+            subObj->clearLoadedKeys();
+            continue;
+        }
+        for (auto* const entry : asConfigObjectList(value))
+            entry->clearLoadedKeys();
     }
 }
 
-QStringList ConfigObject::identityKeys() const {
-    return {};
-}
-
-QStringList ConfigObject::unknownKeys() const {
-    auto keys = m_extras.keys();
+void ConfigObject::syncFromGlobal(ConfigObject* global) {
+    m_global = global;
 
     const auto* meta = metaObject();
-    for (int i = basePropertyOffset(); i < meta->propertyCount(); ++i) {
-        const auto prop = meta->property(i);
-        const auto key = QString::fromUtf8(prop.name());
+    qCDebug(lcConfig) << "Syncing" << meta->className() << "from global, loaded keys:" << m_loadedKeys;
 
-        // Never a node, and reading one on an overlay warns
-        if (isGlobalOnly(key))
-            continue;
+    // Connect batched change signal (single connection per ConfigObject pair)
+    connect(global, &ConfigObject::propertiesChanged, this, &ConfigObject::onGlobalPropertiesChanged);
 
-        auto* const node = prop.read(this).value<ConfigNode*>();
-        if (!node)
-            continue;
-
-        const auto childKeys = node->unknownKeys();
-        for (const auto& childKey : childKeys)
-            keys.append(joinPath(key, childKey));
-    }
-
-    return keys;
-}
-
-QList<ConfigNode*> ConfigObject::childNodes() const {
-    QList<ConfigNode*> nodes;
-
-    const auto* meta = metaObject();
-    for (int i = basePropertyOffset(); i < meta->propertyCount(); ++i) {
-        const auto prop = meta->property(i);
-
-        // Never a node, and reading one on an overlay warns
-        if (isGlobalOnly(QString::fromUtf8(prop.name())))
-            continue;
-
-        if (auto* const node = prop.read(this).value<ConfigNode*>())
-            nodes.append(node);
-    }
-
-    return nodes;
-}
-
-void ConfigObject::syncValuesFromGlobal() {
-    const auto* meta = metaObject();
-    qCDebug(lcConfig) << "  Loaded keys:" << m_loadedKeys;
-
-    // Copy all non-loaded property values from global
+    // Initial sync: copy all non-loaded property values from global
     for (int i = basePropertyOffset(); i < meta->propertyCount(); ++i) {
         auto prop = meta->property(i);
         const auto key = QString::fromUtf8(prop.name());
@@ -203,9 +242,14 @@ void ConfigObject::syncValuesFromGlobal() {
         if (isGlobalOnly(key))
             continue;
 
-        if (auto* const node = prop.read(this).value<ConfigNode*>()) {
-            if (auto* const globalNode = prop.read(m_global).value<ConfigNode*>())
-                node->syncFromGlobal(globalNode);
+        auto current = prop.read(this);
+        auto* subObj = current.value<ConfigObject*>();
+
+        if (subObj) {
+            auto globalVal = prop.read(global);
+            auto* globalSub = globalVal.value<ConfigObject*>();
+            if (globalSub)
+                subObj->syncFromGlobal(globalSub);
             continue;
         }
 
@@ -213,7 +257,7 @@ void ConfigObject::syncValuesFromGlobal() {
             continue;
 
         if (!m_loadedKeys.contains(key)) {
-            auto val = prop.read(m_global);
+            auto val = prop.read(global);
             prop.write(this, val);
             m_loadedKeys.remove(key); // setter added it — remove since this is a synced value
             qCDebug(lcConfig) << "  Synced" << key << "=" << val << "from global";
@@ -235,8 +279,11 @@ void ConfigObject::resyncFromGlobal() {
         if (isGlobalOnly(key))
             continue;
 
-        if (auto* const node = prop.read(this).value<ConfigNode*>()) {
-            node->resyncFromGlobal();
+        auto current = prop.read(this);
+        auto* subObj = current.value<ConfigObject*>();
+
+        if (subObj) {
+            subObj->resyncFromGlobal();
             continue;
         }
 
@@ -250,36 +297,191 @@ void ConfigObject::resyncFromGlobal() {
     }
 }
 
+int ConfigObject::basePropertyOffset() {
+    return ConfigObject::staticMetaObject.propertyCount();
+}
+
+QString ConfigObject::propertyPath(const QString& name) const {
+    QStringList parts;
+    parts.append(name);
+
+    const QObject* obj = this;
+    while (auto* parentObj = obj->parent()) {
+        auto* parentConfig = qobject_cast<const ConfigObject*>(parentObj);
+        if (!parentConfig)
+            break;
+
+        // Find which property name this child is on the parent
+        const auto* meta = parentConfig->metaObject();
+        bool found = false;
+        for (int i = basePropertyOffset(); i < meta->propertyCount(); ++i) {
+            auto prop = meta->property(i);
+            auto val = prop.read(parentObj);
+            if (val.value<QObject*>() == obj) {
+                parts.prepend(QString::fromUtf8(prop.name()));
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+            break;
+
+        obj = parentObj;
+    }
+
+    return parts.join(QLatin1Char('.'));
+}
+
 bool ConfigObject::isPropertyLoaded(const QString& name) const {
     return m_loadedKeys.contains(name);
+}
+
+bool ConfigObject::isOverlay() const {
+    return m_global != nullptr;
 }
 
 bool ConfigObject::isGlobalOnly(const QString& name) const {
     return isOverlay() && m_globalOnlyKeys.contains(name);
 }
 
-QStringList ConfigObject::globalOnlyKeys() const {
-    return { m_globalOnlyKeys.begin(), m_globalOnlyKeys.end() };
+void ConfigObject::markPropertyLoaded(const QString& name) {
+    m_loadedKeys.insert(name);
+}
+
+void ConfigObject::captureDefaults() {
+    const auto* meta = metaObject();
+    for (int i = basePropertyOffset(); i < meta->propertyCount(); ++i) {
+        const auto prop = meta->property(i);
+        const auto value = prop.read(this);
+
+        if (auto* subObj = value.value<ConfigObject*>()) {
+            subObj->captureDefaults();
+            continue;
+        }
+
+        if (isConfigObjectList(value)) {
+            for (auto* entry : asConfigObjectList(value))
+                entry->captureDefaults();
+            continue;
+        }
+
+        if (prop.isWritable())
+            m_defaults.insert(QString::fromUtf8(prop.name()), value);
+    }
+}
+
+QVariant ConfigObject::defaultOf(const QString& name) const {
+    return m_defaults.value(name, QVariant());
+}
+
+bool ConfigObject::setOption(const QString& name, const QVariant& value) {
+    const int idx = metaObject()->indexOfProperty(name.toUtf8().constData());
+    if (idx < 0) {
+        qCWarning(lcConfig, "setOption: no such option '%s'", qUtf8Printable(propertyPath(name)));
+        return false;
+    }
+
+    const auto prop = metaObject()->property(idx);
+    if (!prop.isWritable())
+        return false;
+
+    // Convert explicitly so a QML number lands in an int/qreal property rather than being
+    // rejected by QMetaProperty::write.
+    QVariant val = value;
+    if (val.metaType() != prop.metaType() && !val.convert(prop.metaType())) {
+        qCWarning(lcConfig, "setOption: cannot convert value for '%s'", qUtf8Printable(propertyPath(name)));
+        return false;
+    }
+
+    return prop.write(this, val);
+}
+
+bool ConfigObject::isModified(const QString& name) const {
+    const auto it = m_defaults.constFind(name);
+    if (it == m_defaults.constEnd())
+        return false;
+
+    const int idx = metaObject()->indexOfProperty(name.toUtf8().constData());
+    if (idx < 0)
+        return false;
+
+    return metaObject()->property(idx).read(this) != *it;
 }
 
 void ConfigObject::resetOption(const QString& name) {
     m_loadedKeys.remove(name);
 
-    const int idx = metaObject()->indexOfProperty(name.toUtf8().constData());
-    if (idx < 0)
-        return;
-
-    const auto prop = metaObject()->property(idx);
-
-    if (auto* const node = prop.read(this).value<ConfigNode*>()) {
-        node->clearLoadedKeys();
-        node->resyncFromGlobal();
+    // On an overlay the option isn't owned here — dropping the override means falling
+    // back to the global value, not to the built-in default.
+    if (m_global) {
+        int idx = metaObject()->indexOfProperty(name.toUtf8().constData());
+        if (idx >= 0) {
+            auto prop = metaObject()->property(idx);
+            if (prop.isWritable())
+                prop.write(this, prop.read(m_global));
+        }
         return;
     }
 
-    // If synced from global, re-copy the global value
-    if (m_global && prop.isWritable())
-        prop.write(this, prop.read(m_global));
+    const auto it = m_defaults.constFind(name);
+    if (it == m_defaults.constEnd())
+        return;
+
+    const int idx = metaObject()->indexOfProperty(name.toUtf8().constData());
+    if (idx >= 0) {
+        auto prop = metaObject()->property(idx);
+        if (prop.isWritable()) {
+            prop.write(this, *it);
+            m_loadedKeys.remove(name); // The setter re-adds it; this is a default, not a loaded value
+        }
+    }
+}
+
+void ConfigObject::resetAllOptions() {
+    const auto* meta = metaObject();
+    for (int i = basePropertyOffset(); i < meta->propertyCount(); ++i) {
+        const auto prop = meta->property(i);
+        const auto value = prop.read(this);
+
+        if (auto* subObj = value.value<ConfigObject*>()) {
+            subObj->resetAllOptions();
+            continue;
+        }
+
+        if (isConfigObjectList(value)) {
+            for (auto* entry : asConfigObjectList(value))
+                entry->resetAllOptions();
+            continue;
+        }
+
+        if (prop.isWritable())
+            resetOption(QString::fromUtf8(prop.name()));
+    }
+}
+
+void ConfigObject::resetToDefaults(const QVariantMap& defaults) {
+    const auto* meta = metaObject();
+    for (int i = basePropertyOffset(); i < meta->propertyCount(); ++i) {
+        auto prop = meta->property(i);
+        if (!prop.isWritable()) continue;
+
+        const auto key = QString::fromUtf8(prop.name());
+        if (!defaults.contains(key)) continue;
+
+        auto current = prop.read(this);
+
+        // Recurse into sub-objects
+        if (auto* subObj = current.value<ConfigObject*>()) {
+            subObj->resetToDefaults(defaults.value(key).toMap());
+            continue;
+        }
+
+        if (isGlobalOnly(key)) continue;
+
+        prop.write(this, defaults.value(key));
+        m_loadedKeys.remove(key);
+    }
 }
 
 void ConfigObject::onGlobalPropertiesChanged(const QMap<QString, QVariant>& changed) {
@@ -297,28 +499,30 @@ void ConfigObject::onGlobalPropertiesChanged(const QMap<QString, QVariant>& chan
     }
 }
 
-QString ConfigObject::childPath(const ConfigNode* child) const {
-    const auto* meta = metaObject();
-    for (int i = basePropertyOffset(); i < meta->propertyCount(); ++i) {
-        const auto prop = meta->property(i);
-
-        // Never a node, and reading one on an overlay warns, which would recurse back here
-        if (isGlobalOnly(QString::fromUtf8(prop.name())))
-            continue;
-
-        if (prop.read(this).value<ConfigNode*>() == child)
-            return QString::fromUtf8(prop.name());
-    }
-
-    return {};
-}
-
-void ConfigObject::markPropertyLoaded(const QString& name) {
-    m_loadedKeys.insert(name);
-}
-
 void ConfigObject::markGlobalOnly(const QString& name) {
     m_globalOnlyKeys.insert(name);
+}
+
+void ConfigObject::notifyPropertyChanged(const QString& name, const QVariant& value) {
+    m_pendingChanges.insert(name, value);
+
+    if (!m_batchTimer) {
+        m_batchTimer = new QTimer(this);
+        m_batchTimer->setSingleShot(true);
+        m_batchTimer->setInterval(0);
+        connect(m_batchTimer, &QTimer::timeout, this, &ConfigObject::emitBatchedChanges);
+    }
+
+    m_batchTimer->start();
+}
+
+void ConfigObject::emitBatchedChanges() {
+    if (m_pendingChanges.isEmpty())
+        return;
+
+    auto changes = std::move(m_pendingChanges);
+    m_pendingChanges.clear();
+    emit propertiesChanged(changes);
 }
 
 } // namespace caelestia::config

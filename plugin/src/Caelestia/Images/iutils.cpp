@@ -27,6 +27,11 @@ QUrl IUtils::urlForPath(const QString& path, int fillMode) {
     case 2: // Image.PreserveAspectCrop
         prefix = QStringLiteral("ccache");
         break;
+    case 3: // Image.Tile
+    case 4: // Image.TileVertically
+    case 5: // Image.TileHorizontally
+    case 6: // Image.Pad
+        return QUrl::fromLocalFile(path);
     default: // Image.Stretch or any other ones
         prefix = QStringLiteral("scache");
         break;

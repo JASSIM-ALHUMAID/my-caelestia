@@ -10,6 +10,8 @@ PageBase {
     title: qsTr("Active window")
     isSubPage: true
 
+    readonly property string edge: root.nState.selectedEdge
+
     ColumnLayout {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
@@ -17,31 +19,35 @@ PageBase {
         spacing: Tokens.spacing.extraSmall / 2
 
         ToggleRow {
+            Layout.fillWidth: true
             first: true
             text: qsTr("Compact")
-            checked: Config.bar.activeWindow.compact
-            onToggled: GlobalConfig.bar.activeWindow.compact = checked
+            checked: Config.bar[root.edge].activeWindow.compact
+            onToggled: GlobalConfig.bar[root.edge].activeWindow.compact = checked
         }
 
         ToggleRow {
+            Layout.fillWidth: true
             text: qsTr("Inverted")
-            checked: Config.bar.activeWindow.inverted
-            onToggled: GlobalConfig.bar.activeWindow.inverted = checked
+            checked: Config.bar[root.edge].activeWindow.inverted
+            onToggled: GlobalConfig.bar[root.edge].activeWindow.inverted = checked
         }
 
         ToggleRow {
+            Layout.fillWidth: true
             text: qsTr("Show on hover")
             subtext: qsTr("Only show the active window title while hovering")
-            checked: Config.bar.activeWindow.showOnHover
-            onToggled: GlobalConfig.bar.activeWindow.showOnHover = checked
+            checked: Config.bar[root.edge].activeWindow.showOnHover
+            onToggled: GlobalConfig.bar[root.edge].activeWindow.showOnHover = checked
         }
 
         ToggleRow {
+            Layout.fillWidth: true
             last: true
             text: qsTr("Popout on hover")
             subtext: qsTr("Show a window details popout when hovering")
-            checked: Config.bar.popouts.activeWindow
-            onToggled: GlobalConfig.bar.popouts.activeWindow = checked
+            checked: Config.bar[root.edge].popouts.activeWindow
+            onToggled: GlobalConfig.bar[root.edge].popouts.activeWindow = checked
         }
     }
 }

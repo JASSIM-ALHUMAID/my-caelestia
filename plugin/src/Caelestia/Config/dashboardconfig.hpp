@@ -2,7 +2,11 @@
 
 #include "configobject.hpp"
 
+#include <qstring.h>
+
 namespace caelestia::config {
+
+using Qt::StringLiterals::operator""_s;
 
 class DashboardPerformance : public ConfigObject {
     Q_OBJECT
@@ -26,6 +30,8 @@ class DashboardConfig : public ConfigObject {
 
     CONFIG_PROPERTY(bool, enabled, true)
     CONFIG_PROPERTY(bool, showOnHover, true)
+    CONFIG_PROPERTY(QString, fullscreen, u"off"_s)
+    CONFIG_PROPERTY(QString, position, u"top"_s)
     CONFIG_PROPERTY(bool, showDashboard, true)
     CONFIG_PROPERTY(bool, showMedia, true)
     CONFIG_PROPERTY(bool, showPerformance, true)

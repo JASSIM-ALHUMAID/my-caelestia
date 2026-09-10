@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Layouts
 import Caelestia.Config
 import qs.components
 import qs.components.controls
@@ -9,11 +8,12 @@ StyledSwitch {
     id: root
 
     property string subtext
+    property string resetIcon
     property alias first: bg.first
     property alias last: bg.last
     readonly property alias bg: bg
 
-    Layout.fillWidth: true
+    signal resetRequested()
 
     horizontalPadding: Tokens.padding.largeIncreased
     verticalPadding: Tokens.padding.medium
@@ -27,6 +27,16 @@ StyledSwitch {
     indicator.anchors.right: right
     indicator.anchors.rightMargin: root.horizontalPadding
 
+    IconButton {
+        anchors.right: root.indicator.left
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.rightMargin: Tokens.spacing.small
+        icon: root.resetIcon
+        type: IconButton.Text
+        visible: root.resetIcon !== ""
+        onClicked: root.resetRequested()
+    }
+
     onPressed: stateLayer.press(stateLayer.mouseX, stateLayer.mouseY)
 
     background: ConnectedRect {
@@ -35,7 +45,6 @@ StyledSwitch {
         StateLayer {
             id: stateLayer
 
-            disabled: root.disabled
             manualPressOverride: root.pressed
         }
     }

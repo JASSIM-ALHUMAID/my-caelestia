@@ -74,6 +74,7 @@ StyledClippingRect {
         }
 
         ButtonRow {
+            visible: Config.lock.mediaControls
             Layout.alignment: Qt.AlignHCenter
             Layout.topMargin: Tokens.spacing.medium
 

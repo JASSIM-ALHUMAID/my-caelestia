@@ -1,0 +1,19 @@
+{
+    "appearance": {
+        "animDurations": {
+            "expressiveDefaultSpatial": 500,
+            "expressiveFastEffects": 150,
+            "expressiveFastSpatial": 350,
+            "expressiveSlowSpatial": 650,
+            "extraLarge": 1000,
+            "large": 600,
+            "normal": 400,
+            "small": 200
+        }
+    },
+    "sizes": {
+        "launcher": {
+            "iconScale": 1.3
+        }
+    }
+}

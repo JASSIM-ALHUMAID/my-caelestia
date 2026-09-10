@@ -8,7 +8,8 @@ import qs.services
 GridLayout {
     id: root
 
-    required property ScreenState screenState
+    required property DrawerVisibilities visibilities
+    required property DashboardState dashState
     required property FileDialog facePicker
 
     rowSpacing: Tokens.spacing.medium
@@ -25,7 +26,7 @@ GridLayout {
         User {
             id: user
 
-            screenState: root.screenState
+            visibilities: root.visibilities
             facePicker: root.facePicker
         }
     }
@@ -67,7 +68,7 @@ GridLayout {
         Calendar {
             id: calendar
 
-            screenState: root.screenState
+            dashState: root.dashState
         }
     }
 

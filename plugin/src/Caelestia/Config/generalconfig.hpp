@@ -30,26 +30,31 @@ class GeneralIdle : public ConfigObject {
 
     CONFIG_GLOBAL_PROPERTY(bool, lockBeforeSleep, true)
     CONFIG_GLOBAL_PROPERTY(bool, inhibitWhenAudio, true)
-    CONFIG_GLOBAL_PROPERTY(bool, inhibitWhenCharging, false)
-    CONFIG_GLOBAL_PROPERTY(QVariantList, timeouts,
-        {
-            vmap({
-                { u"timeout"_s, 180 },
-                { u"idleAction"_s, u"lock"_s },
-            }),
-            vmap({
-                { u"timeout"_s, 300 },
-                { u"idleAction"_s, u"dpms off"_s },
-                { u"returnAction"_s, u"dpms on"_s },
-            }),
-            vmap({
-                { u"timeout"_s, 600 },
-                { u"idleAction"_s, QStringList{ u"suspendThenHibernate"_s } },
-            }),
-        })
+    // Split out of inhibitWhenAudio: screen-off and suspend are conveniences, but the lock
+    // is a security boundary, and leaving music on should not be able to disable it. Defaults
+    // to true purely to preserve the previous single-flag behaviour.
+    CONFIG_GLOBAL_PROPERTY(bool, inhibitLockWhenAudio, true)
+    CONFIG_GLOBAL_PROPERTY(int, lockTimeout, 180)
+    CONFIG_GLOBAL_PROPERTY(int, screenOffTimeout, 300)
+    CONFIG_GLOBAL_PROPERTY(int, suspendTimeout, 600)
 
 public:
     explicit GeneralIdle(QObject* parent = nullptr)
+        : ConfigObject(parent) {}
+};
+
+class GeneralScreensaver : public ConfigObject {
+    Q_OBJECT
+    QML_ANONYMOUS
+
+    CONFIG_GLOBAL_PROPERTY(bool, enabled, true)
+    CONFIG_GLOBAL_PROPERTY(int, timeout, 150)
+    CONFIG_GLOBAL_PROPERTY(QString, effect, u"logo"_s)
+    CONFIG_GLOBAL_PROPERTY(bool, randomEffects, false)
+    CONFIG_GLOBAL_PROPERTY(QString, videoPath, "")
+
+public:
+    explicit GeneralScreensaver(QObject* parent = nullptr)
         : ConfigObject(parent) {}
 };
 
@@ -96,6 +101,7 @@ class GeneralConfig : public ConfigObject {
     CONFIG_PROPERTY(qreal, sessionGifSpeed, 0.7)
     CONFIG_SUBOBJECT(GeneralApps, apps)
     CONFIG_SUBOBJECT(GeneralIdle, idle)
+    CONFIG_SUBOBJECT(GeneralScreensaver, screensaver)
     CONFIG_SUBOBJECT(GeneralBattery, battery)
 
 public:
@@ -103,6 +109,7 @@ public:
         : ConfigObject(parent)
         , m_apps(new GeneralApps(this))
         , m_idle(new GeneralIdle(this))
+        , m_screensaver(new GeneralScreensaver(this))
         , m_battery(new GeneralBattery(this)) {}
 };
 

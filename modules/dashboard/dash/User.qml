@@ -13,7 +13,7 @@ import qs.utils
 Item {
     id: root
 
-    required property ScreenState screenState
+    required property DrawerVisibilities visibilities
     required property FileDialog facePicker
 
     property color pfpFallbackColour: Colours.layer(Colours.palette.m3surfaceContainerHighest, 2)
@@ -57,7 +57,7 @@ Item {
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                    root.screenState.dashboard = false;
+                    root.visibilities.dashboard = false;
                     root.facePicker.open();
                 }
             }

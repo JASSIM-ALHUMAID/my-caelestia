@@ -81,34 +81,6 @@ void HyprExtras::batchMessage(const QStringList& messages) {
     });
 }
 
-void HyprExtras::applyOptions(const QVariantHash& options) {
-    if (options.isEmpty()) {
-        return;
-    }
-
-    QString request;
-    request.reserve(12 + options.size() * 40);
-    request += QLatin1String("[[BATCH]]");
-    for (auto it = options.constBegin(); it != options.constEnd(); ++it) {
-        if (!m_usingLua) {
-            request +=
-                QLatin1String("keyword ") + it.key() + QLatin1Char(' ') + it.value().toString() + QLatin1Char(';');
-        } else {
-            auto parts = it.key().split(':');
-            request += "eval hl.config({ " + parts.join(" = { ") + " = " + it.value().toString() +
-                       QString(" }").repeated(parts.size() - 1) + " });";
-        }
-    }
-
-    makeRequest(request, [this](bool success, const QByteArray& res) {
-        if (success) {
-            refreshOptions();
-        } else {
-            qCWarning(lcHypr) << "applyOptions: request error" << QString::fromUtf8(res);
-        }
-    });
-}
-
 void HyprExtras::refreshOptions() {
     if (!m_optionsRefresh.isNull()) {
         m_optionsRefresh->close();
@@ -125,8 +97,8 @@ void HyprExtras::refreshOptions() {
 
         for (const auto& o : std::as_const(options)) {
             const auto obj = o.toObject();
-            const auto key = obj.value("value").toString();
-            const auto value = obj.value("data").toObject().value("current").toVariant();
+            const auto key = obj.value("name").toString();
+            const auto value = obj.value("current").toVariant();
             if (m_options.value(key) != value) {
                 dirty = true;
                 m_options.insert(key, value);

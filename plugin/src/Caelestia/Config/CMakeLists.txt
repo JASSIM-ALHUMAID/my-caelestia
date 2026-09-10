@@ -3,8 +3,6 @@ qml_module(caelestia-config
     SOURCES
         config.cpp
         configattached.cpp
-        configlist.cpp
-        confignode.cpp
         configobject.cpp
         rootconfig.cpp
         appearanceconfig.cpp
@@ -18,6 +16,8 @@ qml_module(caelestia-config
         barconfig.hpp
         borderconfig.hpp
         dashboardconfig.hpp
+        dockconfig.hpp
+        edgesconfig.hpp
         generalconfig.hpp
         launcherconfig.hpp
         lockconfig.hpp

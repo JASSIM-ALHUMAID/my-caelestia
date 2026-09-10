@@ -1,6 +1,5 @@
 #pragma once
 
-#include "configlist.hpp"
 #include "configobject.hpp"
 
 #include <qstring.h>
@@ -26,10 +25,37 @@ class UtilitiesToasts : public ConfigObject {
     CONFIG_GLOBAL_PROPERTY(bool, kbLayoutChanged, true)
     CONFIG_GLOBAL_PROPERTY(bool, kbLimit, true)
     CONFIG_GLOBAL_PROPERTY(bool, vpnChanged, true)
+    CONFIG_GLOBAL_PROPERTY(bool, hyprsunsetChanged, true)
     CONFIG_GLOBAL_PROPERTY(bool, nowPlaying, false)
 
 public:
     explicit UtilitiesToasts(QObject* parent = nullptr)
+        : ConfigObject(parent) {}
+};
+
+class UtilitiesSounds : public ConfigObject {
+    Q_OBJECT
+    QML_ANONYMOUS
+
+    // Master switch for ambient event sounds, off so an install never starts making noise on its
+    // own. The names below are pre-filled with XDG sound-theme names so flipping this on gives a
+    // working set; clear an individual one to silence just that event. A value containing `/` is
+    // treated as a path to a sound file instead of a theme name.
+    CONFIG_GLOBAL_PROPERTY(bool, enabled, false)
+    CONFIG_GLOBAL_PROPERTY(QString, chargerPlugged, u"power-plug"_s)
+    CONFIG_GLOBAL_PROPERTY(QString, chargerUnplugged, u"power-unplug"_s)
+    CONFIG_GLOBAL_PROPERTY(QString, serviceOn, u"device-added"_s)
+    CONFIG_GLOBAL_PROPERTY(QString, serviceOff, u"device-removed"_s)
+    CONFIG_GLOBAL_PROPERTY(QString, startup, u"service-login"_s)
+    CONFIG_GLOBAL_PROPERTY(QString, volumeChange, u"audio-volume-change"_s)
+    // No conventional sound exists for a brightness step, so this is silent unless set.
+    CONFIG_GLOBAL_PROPERTY(QString, brightnessChange, "")
+    // Volume and brightness fire per scroll tick; without a floor this spawns dozens of
+    // canberra processes a second.
+    CONFIG_GLOBAL_PROPERTY(int, throttleMs, 150)
+
+public:
+    explicit UtilitiesSounds(QObject* parent = nullptr)
         : ConfigObject(parent) {}
 };
 
@@ -39,23 +65,25 @@ class UtilitiesVpn : public ConfigObject {
 
     CONFIG_GLOBAL_PROPERTY(bool, enabled, false)
     CONFIG_GLOBAL_PROPERTY(QVariantList, provider)
-    CONFIG_GLOBAL_PROPERTY(QString, selectedProvider, u""_s)
 
 public:
     explicit UtilitiesVpn(QObject* parent = nullptr)
         : ConfigObject(parent) {}
 };
 
-class UtilitiesCards : public ConfigObject {
+class UtilitiesHyprsunset : public ConfigObject {
     Q_OBJECT
     QML_ANONYMOUS
 
-    CONFIG_PROPERTY(bool, keepAwake, true)
-    CONFIG_PROPERTY(bool, recorder, true)
-    CONFIG_PROPERTY(bool, quickToggles, true)
+    CONFIG_GLOBAL_PROPERTY(bool, enabled, false)
+    CONFIG_GLOBAL_PROPERTY(bool, automatic, false)
+    CONFIG_GLOBAL_PROPERTY(QString, from, u"19:00"_s)
+    CONFIG_GLOBAL_PROPERTY(QString, to, u"06:30"_s)
+    CONFIG_GLOBAL_PROPERTY(int, temperature, 4500)
+    CONFIG_GLOBAL_PROPERTY(int, gamma, 100)
 
 public:
-    explicit UtilitiesCards(QObject* parent = nullptr)
+    explicit UtilitiesHyprsunset(QObject* parent = nullptr)
         : ConfigObject(parent) {}
 };
 
@@ -65,26 +93,29 @@ class UtilitiesConfig : public ConfigObject {
 
     CONFIG_PROPERTY(bool, enabled, true)
     CONFIG_PROPERTY(int, maxToasts, 4)
-    CONFIG_SUBOBJECT(UtilitiesCards, cards)
     CONFIG_SUBOBJECT(UtilitiesToasts, toasts)
+    CONFIG_SUBOBJECT(UtilitiesSounds, sounds)
     CONFIG_SUBOBJECT(UtilitiesVpn, vpn)
-    CONFIG_LIST(EntryList, quickToggles,
+    CONFIG_SUBOBJECT(UtilitiesHyprsunset, hyprsunset)
+    CONFIG_PROPERTY(QVariantList, quickToggles,
         {
-            LIST_ENTRY(wifi, true),
-            LIST_ENTRY(bluetooth, true),
-            LIST_ENTRY(mic, true),
-            LIST_ENTRY(settings, true),
-            LIST_ENTRY(gameMode, true),
-            LIST_ENTRY(dnd, true),
-            LIST_ENTRY(vpn, false),
+            vmap({ { u"id"_s, u"wifi"_s }, { u"enabled"_s, true } }),
+            vmap({ { u"id"_s, u"bluetooth"_s }, { u"enabled"_s, true } }),
+            vmap({ { u"id"_s, u"mic"_s }, { u"enabled"_s, true } }),
+            vmap({ { u"id"_s, u"settings"_s }, { u"enabled"_s, true } }),
+            vmap({ { u"id"_s, u"gameMode"_s }, { u"enabled"_s, true } }),
+            vmap({ { u"id"_s, u"dnd"_s }, { u"enabled"_s, true } }),
+            vmap({ { u"id"_s, u"hyprsunset"_s }, { u"enabled"_s, true } }),
+            vmap({ { u"id"_s, u"vpn"_s }, { u"enabled"_s, false } }),
         })
 
 public:
     explicit UtilitiesConfig(QObject* parent = nullptr)
         : ConfigObject(parent)
-        , m_cards(new UtilitiesCards(this))
         , m_toasts(new UtilitiesToasts(this))
-        , m_vpn(new UtilitiesVpn(this)) {}
+        , m_sounds(new UtilitiesSounds(this))
+        , m_vpn(new UtilitiesVpn(this))
+        , m_hyprsunset(new UtilitiesHyprsunset(this)) {}
 };
 
 } // namespace caelestia::config

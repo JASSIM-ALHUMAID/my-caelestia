@@ -6,10 +6,12 @@ qml_module(caelestia-internal
         linearindicatormanager.cpp
         hyprdevices.cpp
         hyprextras.cpp
+        logindmanager.cpp
         sparklineitem.cpp
         visualiserbars.cpp
     LIBRARIES
         Qt::Gui
         Qt::Quick
         Qt::Network
+        Qt::DBus
 )

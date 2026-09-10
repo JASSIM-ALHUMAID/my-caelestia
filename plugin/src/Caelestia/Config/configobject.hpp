@@ -1,10 +1,13 @@
 #pragma once
 
-#include "confignode.hpp"
-
 #include <qjsonobject.h>
+#include <qloggingcategory.h>
+#include <qmap.h>
+#include <qobject.h>
 #include <qqmlintegration.h>
 #include <qset.h>
+#include <qtimer.h>
+#include <qvariant.h>
 
 namespace caelestia::config {
 
@@ -81,31 +84,60 @@ private:                                                                        
 
 namespace caelestia::config {
 
-// A node whose state lives in its declared properties.
-class ConfigObject : public ConfigNode {
+Q_DECLARE_LOGGING_CATEGORY(lcConfig)
+
+class ConfigObject : public QObject {
     Q_OBJECT
 
 public:
     explicit ConfigObject(QObject* parent = nullptr);
 
-    void loadFromJson(const QJsonValue& json) override;
-    [[nodiscard]] QJsonValue toJson() const override;
-    void clearLoadedKeys() override;
-    [[nodiscard]] QStringList unknownKeys() const override;
-    [[nodiscard]] QList<ConfigNode*> childNodes() const override;
-    void resyncFromGlobal() override;
+    void loadFromJson(const QJsonObject& obj);
+    [[nodiscard]] QJsonObject toJsonObject() const;
 
-    // Keys identifying this as the same thing across a reload, empty if it has no identity.
-    // A list element that keeps its identity is updated in place instead of recreated.
-    [[nodiscard]] virtual QStringList identityKeys() const;
+    // Per-monitor overlay support (Qt Resolve Mask pattern).
+    void syncFromGlobal(ConfigObject* global);
+    void resyncFromGlobal();
+    void clearLoadedKeys();
 
     [[nodiscard]] bool isPropertyLoaded(const QString& name) const;
+    [[nodiscard]] QString propertyPath(const QString& name) const;
+
+    // A property holding a list of config objects (e.g. session.items). Such a list is a
+    // fixed roster built in C++; JSON only overrides fields on entries that already exist,
+    // matched by their `id`. asConfigObjectList returns an empty list for anything else, so
+    // check isConfigObjectList first when empty and "not a roster" must be told apart.
+    [[nodiscard]] static bool isConfigObjectList(const QVariant& value);
+    [[nodiscard]] static QList<ConfigObject*> asConfigObjectList(const QVariant& value);
+
+    // First property index past QObject's own (objectName). ConfigObject declares no
+    // properties, so this is where every subclass's config properties begin — including
+    // ones inherited from an intermediate config class (e.g. IconFontStyleConfig). Use
+    // this instead of metaObject()->propertyOffset(), which excludes inherited properties.
+    [[nodiscard]] static int basePropertyOffset();
+    [[nodiscard]] bool isOverlay() const;
     // Returns true only on overlays — global singleton always returns false.
     [[nodiscard]] bool isGlobalOnly(const QString& name) const;
-    // Names marked global-only, regardless of overlay state
-    [[nodiscard]] QStringList globalOnlyKeys() const;
+
+    // Snapshots every property's value as its default. Must run after construction (so
+    // constructor-initialised defaults like AnimCurves are included) and before any config
+    // file is applied — RootConfig::setupFileBackend calls it at exactly that point.
+    void captureDefaults();
+
+    // The captured default, or an invalid QVariant if this property has none.
+    Q_INVOKABLE QVariant defaultOf(const QString& name) const;
+    // True when the property currently differs from its captured default.
+    Q_INVOKABLE bool isModified(const QString& name) const;
+
+    // Writes an option looked up by name. QML's bracket assignment (obj[key] = value) does not
+    // reliably reach the C++ setter on these sub-objects, so anything driving the config from a
+    // schema -- where the key is data, not source -- has to go through this instead.
+    Q_INVOKABLE bool setOption(const QString& name, const QVariant& value);
 
     Q_INVOKABLE void resetOption(const QString& name);
+    // Restores every property on this object (and its sub-objects) to its captured default.
+    Q_INVOKABLE void resetAllOptions();
+    Q_INVOKABLE void resetToDefaults(const QVariantMap& defaults);
 
     template <typename T> static bool updateMember(T& member, const T& value) {
         if constexpr (std::is_floating_point_v<T>) {
@@ -119,19 +151,27 @@ public:
         return true;
     }
 
-protected:
-    void syncValuesFromGlobal() override;
-    void onGlobalPropertiesChanged(const QMap<QString, QVariant>& changed) override;
-    [[nodiscard]] QString childPath(const ConfigNode* child) const override;
+signals:
+    void propertiesChanged(const QMap<QString, QVariant>& changed);
 
+protected:
     void markPropertyLoaded(const QString& name);
     void markGlobalOnly(const QString& name);
+    void notifyPropertyChanged(const QString& name, const QVariant& value);
 
 private:
+    void onGlobalPropertiesChanged(const QMap<QString, QVariant>& changed);
+    void emitBatchedChanges();
+
+    // Built-in defaults, captured before the config file is applied
+    QMap<QString, QVariant> m_defaults;
+
+    // Per-monitor overlay state
+    ConfigObject* m_global = nullptr;
     QSet<QString> m_loadedKeys;
     QSet<QString> m_globalOnlyKeys;
-    // Loaded keys matching no property, kept verbatim so a save does not drop them
-    QJsonObject m_extras;
+    QMap<QString, QVariant> m_pendingChanges;
+    QTimer* m_batchTimer = nullptr;
 };
 
 } // namespace caelestia::config

@@ -49,12 +49,6 @@ StyledRect {
         acceptedButtons: Qt.LeftButton | Qt.MiddleButton
         preventStealing: true
 
-        onEntered: root.modelData.timer.stop()
-        onExited: {
-            if (!pressed)
-                root.modelData.timer.start();
-        }
-
         drag.target: parent
         drag.axis: Drag.XAxis
 
@@ -65,9 +59,6 @@ StyledRect {
                 root.modelData.close();
         }
         onReleased: event => {
-            if (!containsMouse)
-                root.modelData.timer.start();
-
             if (Math.abs(root.x) < root.implicitWidth * Config.notifs.clearThreshold)
                 root.x = 0;
             else
@@ -434,7 +425,7 @@ StyledRect {
                     if (!root.expanded)
                         return;
 
-                    Qt.openUrlExternally(link);
+                    Quickshell.execDetached(["app2unit", "-O", "--", link]);
                     root.modelData.popup = false;
                 }
 

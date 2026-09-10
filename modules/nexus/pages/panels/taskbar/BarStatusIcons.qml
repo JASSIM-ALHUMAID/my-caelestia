@@ -7,18 +7,10 @@ import qs.modules.nexus.common
 PageBase {
     id: root
 
-    readonly property var builtinIcons: ({
-            lockStatus: qsTr("Lock keys"),
-            kbLayout: qsTr("Keyboard layout"),
-            audio: qsTr("Speakers"),
-            microphone: qsTr("Microphone"),
-            network: qsTr("Network"),
-            bluetooth: qsTr("Bluetooth"),
-            battery: qsTr("Battery")
-        })
-
     title: qsTr("Status icons")
     isSubPage: true
+
+    readonly property string edge: root.nState.selectedEdge
 
     ColumnLayout {
         anchors.horizontalCenter: parent.horizontalCenter
@@ -26,73 +18,97 @@ PageBase {
         width: root.cappedWidth
         spacing: Tokens.spacing.extraSmall / 2
 
-        // Visible icons
-        SectionHeader {
+        SettingsSection {
             first: true
-            text: qsTr("Visible icons")
-        }
+            expanded: true
+            title: qsTr("Visible icons")
 
-        ListEditor {
-            function labelFor(item: var): string {
-                const prettyName = root.builtinIcons[item.id];
-                if (prettyName)
-                    return prettyName;
-                const label = item.id.replace(/([A-Z])/g, " $1");
-                return label.charAt(0).toUpperCase() + label.slice(1).toLowerCase();
+            ToggleRow {
+                Layout.fillWidth: true
+                first: true
+                text: qsTr("Speakers")
+                checked: Config.bar[root.edge].status.showAudio
+                onToggled: GlobalConfig.bar[root.edge].status.showAudio = checked
             }
 
-            function toggledFor(item: var): bool {
-                return item.enabled;
+            ToggleRow {
+                Layout.fillWidth: true
+                text: qsTr("Microphone")
+                checked: Config.bar[root.edge].status.showMicrophone
+                onToggled: GlobalConfig.bar[root.edge].status.showMicrophone = checked
             }
 
-            z: 1
-            first: true
-            values: Config.bar.statusIcons.values
-            onItemMoved: (from, to) => GlobalConfig.bar.statusIcons.move(from, to)
-            onItemRemoved: index => GlobalConfig.bar.statusIcons.remove(index)
-            onItemToggled: (index, checked) => GlobalConfig.bar.statusIcons.at(index).enabled = checked
-        }
-
-        DialogSelectButton {
-            id: addItemContainer
-
-            rootParent: root.flickable
-            icon: "add"
-            label: qsTr("Add entry")
-            header: qsTr("Add new entry")
-            acceptLabel: qsTr("Add")
-
-            model: {
-                const builtins = Object.keys(root.builtinIcons).map(k => ({
-                            id: k,
-                            label: root.builtinIcons[k]
-                        }));
-                return builtins;
+            ToggleRow {
+                Layout.fillWidth: true
+                text: qsTr("Keyboard layout")
+                checked: Config.bar[root.edge].status.showKbLayout
+                onToggled: GlobalConfig.bar[root.edge].status.showKbLayout = checked
             }
 
-            onAccepted: {
-                if (!selectedItem) // Should never happen but just in case
-                    return;
+            ToggleRow {
+                Layout.fillWidth: true
+                text: qsTr("Network")
+                checked: Config.bar[root.edge].status.showNetwork
+                onToggled: GlobalConfig.bar[root.edge].status.showNetwork = checked
+            }
 
-                GlobalConfig.bar.statusIcons.insert({
-                    id: selectedItem,
-                    enabled: true
-                });
+            ToggleRow {
+                Layout.fillWidth: true
+                text: qsTr("Wi-Fi")
+                checked: Config.bar[root.edge].status.showWifi
+                onToggled: GlobalConfig.bar[root.edge].status.showWifi = checked
+            }
+
+            ToggleRow {
+                Layout.fillWidth: true
+                text: qsTr("Bluetooth")
+                checked: Config.bar[root.edge].status.showBluetooth
+                onToggled: GlobalConfig.bar[root.edge].status.showBluetooth = checked
+            }
+
+            ToggleRow {
+                Layout.fillWidth: true
+                text: qsTr("Battery")
+                checked: Config.bar[root.edge].status.showBattery
+                onToggled: GlobalConfig.bar[root.edge].status.showBattery = checked
+            }
+
+            ToggleRow {
+                Layout.fillWidth: true
+                last: true
+                text: qsTr("Caps lock")
+                checked: Config.bar[root.edge].status.showLockStatus
+                onToggled: GlobalConfig.bar[root.edge].status.showLockStatus = checked
             }
         }
 
-        // Behaviour
-        SectionHeader {
-            text: qsTr("Behaviour")
+        // Battery
+        SettingsSection {
+            title: qsTr("Battery")
+
+            ToggleRow {
+                Layout.fillWidth: true
+                first: true
+                last: true
+                text: qsTr("Show percentage")
+                subtext: qsTr("Display battery percentage next to the icon")
+                checked: Config.bar[root.edge].status.showBatteryPercentage
+                onToggled: GlobalConfig.bar[root.edge].status.showBatteryPercentage = checked
+            }
         }
 
-        ToggleRow {
-            first: true
-            last: true
-            text: qsTr("Popout on hover")
-            subtext: qsTr("Show a details popout when hovering the status icons")
-            checked: Config.bar.popouts.statusIcons
-            onToggled: GlobalConfig.bar.popouts.statusIcons = checked
+        SettingsSection {
+            title: qsTr("Behaviour")
+
+            ToggleRow {
+                Layout.fillWidth: true
+                first: true
+                last: true
+                text: qsTr("Popout on hover")
+                subtext: qsTr("Show a details popout when hovering the status icons")
+                checked: Config.bar[root.edge].popouts.statusIcons
+                onToggled: GlobalConfig.bar[root.edge].popouts.statusIcons = checked
+            }
         }
     }
 }

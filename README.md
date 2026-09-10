@@ -12,6 +12,16 @@
 
 https://github.com/user-attachments/assets/0840f496-575c-4ca6-83a8-87bb01a85c5f
 
+## This fork: daily workflow
+
+This is a personal fork at [JASSIM-ALHUMAID/my-caelestia](https://github.com/JASSIM-ALHUMAID/my-caelestia), branch `my-caelestia`. The repo is the single source of truth **and** the live config home — `~/.config/caelestia` is a symlink pointing at `caelestia-configs/` in this repo. The runtime copy that the shell actually runs lives at `~/.config/quickshell/caelestia` and is refreshed by the sync script.
+
+Workflow: edit files, then run `./scripts/sync-live.sh` (no arguments). It syncs the runtime copy and restarts the shell so changes take effect immediately; it does **not** commit or push. C++ plugin changes need `devfiles/install-user.fish` instead. See [docs/WORKFLOW.md](docs/WORKFLOW.md) — the single guide covering layout, the edit loop, adding config options and panels, QML conventions, and verification.
+
+```sh
+./scripts/sync-live.sh
+```
+
 ## Components
 
 -   Widgets: [`Quickshell`](https://quickshell.outfoxxed.me)
@@ -23,6 +33,37 @@ https://github.com/user-attachments/assets/0840f496-575c-4ca6-83a8-87bb01a85c5f
 > [!NOTE]
 > This repo is for the desktop shell of the caelestia dots. If you want installation instructions
 > for the entire dots, head to [the main repo](https://github.com/caelestia-dots/caelestia) instead.
+
+### Quick start — unified installer (this fork)
+
+If you cloned this fork directly, run the interactive installer at the repo root:
+
+```sh
+./install.fish
+```
+
+> [!IMPORTANT]
+> Do **not** run it with `sudo`. The script escalates internally only for the steps that
+> actually need root (system shell install, SDDM theme), so files in your home stay
+> owned by you.
+
+It lets you pick any combination of:
+
+1. **Shell** — calls [`devfiles/install-user.fish`](devfiles/install-user.fish) (no sudo, default)
+   or [`devfiles/install-system.fish`](devfiles/install-system.fish) (sudo). See
+   [`devfiles/README.md`](devfiles/README.md) for the full breakdown of what each one does.
+2. **Caelestia user configs** — symlinks `~/.config/caelestia` → this repo's
+   [`caelestia-configs/`](caelestia-configs) directory so your live configs are tracked here.
+   If `~/.config/caelestia` already exists you can choose:
+   - `s` skip,
+   - `b` backup-then-symlink (renames the old one to `caelestia.bak-<timestamp>`),
+   - `m` merge (copies your existing files **into** the repo first, then symlinks).
+3. **SDDM theme** — calls [`sddm/scripts/install.sh`](sddm/scripts/install.sh), which prompts
+   for a theme variant (`locklike` / `minimalist` / `minimalistV2`) and installs to
+   `/usr/share/sddm/themes/caelestia` plus a drop-in at `/etc/sddm.conf.d/caelestia.conf`.
+
+The wrapper is interactive only; for non-interactive / per-piece installs, call the
+individual scripts directly (they remain fully usable on their own).
 
 ### Arch linux
 
@@ -78,6 +119,7 @@ Dependencies:
 -   [`quickshell-git`](https://quickshell.outfoxxed.me) - this has to be the git version, not the latest tagged version
 -   [`ddcutil`](https://github.com/rockowitz/ddcutil)
 -   [`brightnessctl`](https://github.com/Hummer12007/brightnessctl)
+-   [`app2unit`](https://github.com/Vladimir-csp/app2unit)
 -   [`libcava`](https://github.com/LukashonakV/cava)
 -   [`networkmanager`](https://networkmanager.dev)
 -   [`lm-sensors`](https://github.com/lm-sensors/lm-sensors)
@@ -94,6 +136,8 @@ Dependencies:
 -   [`bash`](https://www.gnu.org/software/bash)
 -   `qt6-base`
 -   `qt6-declarative`
+-   `qt6-multimedia` (optional - video wallpapers)
+-   [`ffmpeg`](https://ffmpeg.org) (optional - video wallpapers)
 
 Build dependencies:
 
@@ -278,7 +322,6 @@ For example, to disable the bar on DP-1:
         "font": {
             "scale": 1,
             "clock": "Rubik",
-            "workspaces": "Rubik",
             "headline": {
                 "family": "GoogleSansFlex",
                 "large": { "size": 32, "weight": 500, "italic": false, "vaxes": { "ROND": 25 } },
@@ -335,21 +378,17 @@ For example, to disable the bar on DP-1:
         "sessionGifSpeed": 0.7,
         "apps": {
             "terminal": ["foot"],
-            "audio": ["pwvucontrol"],
+            "audio": ["pavucontrol"],
             "playback": ["mpv"],
             "explorer": ["thunar"]
         },
         "idle": {
             "lockBeforeSleep": true,
             "inhibitWhenAudio": true,
-            "inhibitWhenCharging": false,
             "timeouts": [
                 {
                     "timeout": 180,
-                    "idleAction": "lock",
-                    "inhibitWhenAudio": false,
-                    "inhibitWhenCharging": false,
-                    "respectInhibitors": true
+                    "idleAction": "lock"
                 },
                 {
                     "timeout": 300,
@@ -358,9 +397,16 @@ For example, to disable the bar on DP-1:
                 },
                 {
                     "timeout": 600,
-                    "idleAction": ["suspendThenHibernate"]
+                    "idleAction": ["systemctl", "suspend-then-hibernate"]
                 }
             ]
+        },
+        "screensaver": {
+            "enabled": true,
+            "effect": "logo",
+            "randomEffects": false,
+            "timeout": 150,
+            "videoPath": ""
         },
         "battery": {
             "warnLevels": [
@@ -437,7 +483,7 @@ For example, to disable the bar on DP-1:
             "maxWindowIcons": 5,
             "activeTrail": false,
             "perMonitorWorkspaces": true,
-            "label": "  ",
+            "label": "  ",
             "occupiedLabel": "󰮯",
             "activeLabel": "󰮯",
             "capitalisation": "preserve",
@@ -466,41 +512,21 @@ For example, to disable the bar on DP-1:
             "iconSubs": [],
             "hiddenIcons": []
         },
+        "status": {
+            "showAudio": false,
+            "showMicrophone": false,
+            "showKbLayout": false,
+            "showNetwork": true,
+            "showWifi": true,
+            "showBluetooth": true,
+            "showBattery": true,
+            "showLockStatus": true
+        },
         "clock": {
             "background": false,
             "showDate": false,
             "showIcon": true
         },
-        "statusIcons": [
-            {
-                "id": "lockStatus",
-                "enabled": true
-            },
-            {
-                "id": "audio",
-                "enabled": false
-            },
-            {
-                "id": "microphone",
-                "enabled": false
-            },
-            {
-                "id": "kbLayout",
-                "enabled": false
-            },
-            {
-                "id": "network",
-                "enabled": true
-            },
-            {
-                "id": "bluetooth",
-                "enabled": true
-            },
-            {
-                "id": "battery",
-                "enabled": true
-            }
-        ],
         "entries": [
             {
                 "id": "logo",
@@ -645,7 +671,7 @@ For example, to disable the bar on DP-1:
                 "name": "Shutdown",
                 "icon": "power_settings_new",
                 "description": "Shutdown the system",
-                "command": ["poweroff"],
+                "command": ["systemctl", "poweroff"],
                 "enabled": true,
                 "dangerous": true
             },
@@ -653,7 +679,7 @@ For example, to disable the bar on DP-1:
                 "name": "Reboot",
                 "icon": "cached",
                 "description": "Reboot the system",
-                "command": ["reboot"],
+                "command": ["systemctl", "reboot"],
                 "enabled": true,
                 "dangerous": true
             },
@@ -661,7 +687,7 @@ For example, to disable the bar on DP-1:
                 "name": "Logout",
                 "icon": "exit_to_app",
                 "description": "Log out of the current session",
-                "command": ["logout"],
+                "command": ["loginctl", "terminate-user", ""],
                 "enabled": true,
                 "dangerous": true
             },
@@ -677,7 +703,7 @@ For example, to disable the bar on DP-1:
                 "name": "Sleep",
                 "icon": "bedtime",
                 "description": "Suspend then hibernate",
-                "command": ["suspendThenHibernate"],
+                "command": ["systemctl", "suspend-then-hibernate"],
                 "enabled": true,
                 "dangerous": false
             },
@@ -692,14 +718,10 @@ For example, to disable the bar on DP-1:
         ]
     },
     "lock": {
-        "enabled": true,
-        "useWallpaper": false,
+        "allowScreensaver": false,
         "recolourLogo": true,
         "enableFprint": true,
         "maxFprintTries": 3,
-        "enableHowdy": true,
-        "maxHowdyTries": 3,
-        "triggerHowdyOnWake": true,
         "hideNotifs": false
     },
     "nexus": {
@@ -721,7 +743,8 @@ For example, to disable the bar on DP-1:
         "enabled": true,
         "hideDelay": 2000,
         "enableBrightness": true,
-        "enableMicrophone": false
+        "enableMicrophone": false,
+        "position": "left"
     },
     "services": {
         "weatherLocation": "",
@@ -742,23 +765,18 @@ For example, to disable the bar on DP-1:
         "enabled": true,
         "dragThreshold": 30,
         "vimKeybinds": false,
-        "icons": {
-            "logout": "logout",
-            "shutdown": "power_settings_new",
-            "hibernate": "downloading",
-            "reboot": "cached"
-        },
-        "commands": {
-            "logout": ["logout"],
-            "shutdown": ["poweroff"],
-            "hibernate": ["hibernate"],
-            "reboot": ["reboot"]
-        }
+        "position": "left",
+        "items": [
+            { "id": "lock", "icon": "lock", "command": ["loginctl", "lock-session"], "enabled": true, "order": 0 },
+            { "id": "sleep", "icon": "bedtime", "command": ["systemctl", "suspend"], "enabled": true, "order": 1 },
+            { "id": "logout", "icon": "logout", "command": ["loginctl", "terminate-user", ""], "enabled": true, "order": 2 },
+            { "id": "reboot", "icon": "cached", "command": ["systemctl", "reboot"], "enabled": true, "order": 3 },
+            { "id": "shutdown", "icon": "power_settings_new", "command": ["systemctl", "poweroff"], "enabled": true, "order": 4 }
+        ]
     },
     "sidebar": {
         "enabled": true,
-        "showOnHover": false,
-        "minHoverThreshold": 200,
+        "edge": "right",
         "dragThreshold": 80
     },
     "utilities": {
@@ -777,6 +795,7 @@ For example, to disable the bar on DP-1:
             "kbLayoutChanged": true,
             "kbLimit": true,
             "vpnChanged": true,
+            "hyprsunsetChanged": true,
             "nowPlaying": false
         },
         "vpn": {
@@ -789,6 +808,14 @@ For example, to disable the bar on DP-1:
                     "enabled": false
                 }
             ]
+        },
+        "hyprsunset": {
+            "enabled": false,
+            "automatic": false,
+            "from": "19:00",
+            "to": "06:30",
+            "temperature": 4500,
+            "gamma": 100
         },
         "quickToggles": [
             {
@@ -813,6 +840,10 @@ For example, to disable the bar on DP-1:
             },
             {
                 "id": "dnd",
+                "enabled": true
+            },
+            {
+                "id": "hyprsunset",
                 "enabled": true
             },
             {
@@ -865,12 +896,9 @@ programs.caelestia = {
     environment = [];
   };
   settings = {
-    bar.statusIcons = [
-      { id = "lockStatus"; enabled = true; }
-      { id = "network"; enabled = true; }
-      { id = "bluetooth"; enabled = true; }
-      { id = "battery"; enabled = false; }
-    ];
+    bar.status = {
+      showBattery = false;
+    };
     paths.wallpaperDir = "~/Images";
   };
   cli = {
@@ -895,17 +923,18 @@ https://discord.gg/BGDCFCmMBk
 
 ### My screen is flickering, help pls!
 
-Try disabling VRR in the hyprland config. You can do this by adding the following to `~/.config/caelestia/hypr-user.conf`:
+Try disabling VRR in the hyprland config. You can do this by adding the following to `~/.config/caelestia/hypr-user.lua`:
 
-```conf
-misc {
-    vrr = 0
-}
+```lua
+hl.config({
+    misc = { vrr = 0 },
+})
 ```
 
 ### I want to make my own changes to the hyprland config!
 
-You can add your custom hyprland configs to `~/.config/caelestia/hypr-user.conf`.
+You can add your custom hyprland configs to `~/.config/caelestia/hypr-user.lua`. It is loaded
+last, so anything set there overrides the defaults.
 
 ### I want to make my own changes to other stuff!
 

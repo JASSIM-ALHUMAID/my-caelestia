@@ -4,7 +4,6 @@ import ".."
 import QtQuick
 import Quickshell
 import Caelestia.Config
-import Caelestia.Services
 import qs.services
 import qs.utils
 
@@ -42,12 +41,15 @@ Searcher {
             if (command[0] === "autocomplete" && command.length > 1) {
                 list.search.text = `${GlobalConfig.launcher.actionPrefix}${command[1]} `;
             } else if (command[0] === "setMode" && command.length > 1) {
-                list.screenState.launcher = false;
+                list.visibilities.launcher = false;
                 Colours.setMode(command[1]);
+            } else if (command[0] === "wallpaper" && command.length > 1) {
+                list.visibilities.launcher = false;
+                if (command[1] === "random")
+                    Wallpapers.setRandom();
             } else {
-                list.screenState.launcher = false;
-                if (!SessionManager.exec(command))
-                    Quickshell.execDetached(command);
+                list.visibilities.launcher = false;
+                Quickshell.execDetached(command);
             }
         }
     }

@@ -13,6 +13,7 @@ LazyLoader {
     property string filterLabel: "All files"
     property list<string> filters: ["*"]
     property string title: qsTr("Select a file")
+    property bool showHidden: false
 
     signal accepted(path: string)
     signal rejected
@@ -34,10 +35,11 @@ LazyLoader {
         property list<string> cwd: loader.cwd
         property string filterLabel: loader.filterLabel
         property list<string> filters: loader.filters
+        property bool showHidden: loader.showHidden
 
         readonly property bool selectionValid: {
             const file = folderContents.currentItem?.modelData;
-            return (file && !file.isDir && (filters.includes("*") || filters.includes(file.suffix))) ?? false;
+            return (file && !file.isDir && (filters.includes("*") || filters.some(f => f.toLowerCase() === file.suffix.toLowerCase().split(".").pop()))) ?? false;
         }
 
         function accepted(path: string): void {

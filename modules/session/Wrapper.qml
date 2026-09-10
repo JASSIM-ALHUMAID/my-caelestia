@@ -4,37 +4,32 @@ import QtQuick
 import Caelestia.Config
 import qs.components
 
-Item {
+EdgeAnchoredPanel {
     id: root
 
-    required property ScreenState screenState
-    required property bool sidebarVisible
+    required property DrawerVisibilities visibilities
     readonly property real nonAnimWidth: content.implicitWidth
 
-    readonly property bool shouldBeActive: screenState.session && Config.session.enabled
-    property real offsetScale: shouldBeActive ? 0 : 1
-    property real sidebarOffset: sidebarVisible ? 14 : 0
+    // Content lives in a Loader, so nothing has been measured before the first open. Fall
+    // back to the menu's natural extent along each axis, else the reveal would animate from
+    // a zero-size panel and appear to pop in rather than slide.
+    readonly property int fallbackThickness: Tokens.sizes.session.button + Tokens.padding.large * 2
 
-    visible: offsetScale < 1
-    anchors.rightMargin: (-implicitWidth - 5 - sidebarOffset) * offsetScale
-    implicitWidth: content.implicitWidth
-    implicitHeight: content.implicitHeight || 510 // Hard coded fallback for first open
-    opacity: 1 - offsetScale
+    position: Config.session.position
+    shouldBeActive: visibilities.session && Config.session.enabled
 
-    Behavior on offsetScale {
-        Anim {}
-    }
+    implicitWidth: content.implicitWidth || (isVertical ? fallbackThickness : 510)
+    implicitHeight: content.implicitHeight || (isVertical ? 510 : fallbackThickness)
 
     Loader {
         id: content
 
-        anchors.verticalCenter: parent.verticalCenter
-        anchors.left: parent.left
+        anchors.centerIn: parent
 
         active: root.shouldBeActive || root.visible
 
         sourceComponent: Content {
-            screenState: root.screenState
+            visibilities: root.visibilities
         }
     }
 }

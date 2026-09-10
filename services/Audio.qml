@@ -7,6 +7,7 @@ import Quickshell.Services.Pipewire
 import Caelestia
 import Caelestia.Config
 import Caelestia.Services
+import qs.services
 
 Singleton {
     id: root
@@ -23,6 +24,31 @@ Singleton {
 
     readonly property bool muted: !!sink?.audio?.muted
     readonly property real volume: sink?.audio?.volume ?? 0
+
+    // Is anything actually producing audio right now? The idle chain (screensaver, lock,
+    // screen-off, suspend) hangs off this, so it lives here rather than being spelled out
+    // at each call site -- it used to be duplicated verbatim in two files.
+    //
+    // `pulse.corked` is the part that is easy to miss. A paused stream stays registered with
+    // its volume intact, and browsers in particular park a corked stream for the lifetime of
+    // a tab. Counting those as active audio pins the whole idle chain off indefinitely --
+    // most importantly the auto-lock. PwNode exposes no state property, so the corked flag
+    // has to come out of the raw PipeWire property map, where it is a string.
+    readonly property bool hasActiveStream: streams.some(s => s.ready && s.properties["node.virtual"] !== "true" && s.properties["pulse.corked"] !== "true" && !s.audio.muted && s.audio.volume > 0)
+    readonly property bool hasActiveAudio: Players.list.some(p => p.isPlaying) || hasActiveStream
+
+    // The volume tick watches the sink rather than setVolume(): the hardware keys bind straight
+    // to wpctl, so setVolume() only ever sees the shell's own sliders and scroll actions, which
+    // is not how volume usually changes. `volumeSettled` swallows the first transition, which is
+    // the sink resolving from the 0 fallback at startup rather than anything the user did.
+    property bool volumeSettled: false
+    onVolumeChanged: {
+        if (!volumeSettled) {
+            volumeSettled = true;
+            return;
+        }
+        Sounds.playThrottled(GlobalConfig.utilities.sounds.volumeChange);
+    }
 
     readonly property bool sourceMuted: !!source?.audio?.muted
     readonly property real sourceVolume: source?.audio?.volume ?? 0
@@ -105,27 +131,6 @@ Singleton {
         return stream.properties["application.name"] || stream.description || stream.name || qsTr("Unknown Application");
     }
 
-    function refreshNodes(): void {
-        const newSinks = [];
-        const newSources = [];
-        const newStreams = [];
-
-        for (const node of Pipewire.nodes.values) {
-            if (!node.isStream) {
-                if (node.isSink)
-                    newSinks.push(node);
-                else if (node.audio)
-                    newSources.push(node);
-            } else if (node.audio) {
-                newStreams.push(node);
-            }
-        }
-
-        root.sinks = newSinks;
-        root.sources = newSources;
-        root.streams = newStreams;
-    }
-
     onSinkChanged: {
         if (!sink?.ready)
             return;
@@ -150,26 +155,38 @@ Singleton {
         previousSourceName = newSourceName;
     }
 
-    // Populate immediately: Pipewire.nodes may already be filled by the time this
-    // lazily-loaded singleton is created, so onValuesChanged would never fire.
     Component.onCompleted: {
-        refreshNodes();
         previousSinkName = sink?.description || sink?.name || qsTr("Unknown Device");
         previousSourceName = source?.description || source?.name || qsTr("Unknown Device");
     }
 
     Connections {
         function onValuesChanged(): void {
-            root.refreshNodes();
+            const newSinks = [];
+            const newSources = [];
+            const newStreams = [];
+
+            for (const node of Pipewire.nodes.values) {
+                if (!node.isStream) {
+                    if (node.isSink)
+                        newSinks.push(node);
+                    else if (node.audio)
+                        newSources.push(node);
+                } else if (node.audio) {
+                    newStreams.push(node);
+                }
+            }
+
+            root.sinks = newSinks;
+            root.sources = newSources;
+            root.streams = newStreams;
         }
 
         target: Pipewire.nodes
     }
 
-    // Always track the current defaults so volume/mute bind even if the lists
-    // momentarily lag behind the default node.
     PwObjectTracker {
-        objects: [root.sink, root.source, ...root.sinks, ...root.sources, ...root.streams].filter(n => n)
+        objects: [...root.sinks, ...root.sources, ...root.streams]
     }
 
     CavaProvider {

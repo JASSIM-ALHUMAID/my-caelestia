@@ -1,5 +1,6 @@
 #include "storage.hpp"
 
+#include <QtConcurrent/qtconcurrentrun.h>
 #include <algorithm>
 #include <cmath>
 #include <qdir.h>
@@ -17,11 +18,64 @@ namespace caelestia::services {
 
 namespace {
 
-struct Accum {
-    quint64 usedBytes = 0;
-    quint64 totalBytes = 0;
-    bool hasRoot = false;
+using Accum = DiskAccum;
+
+struct MountPoint {
+    QByteArray device;
+    QByteArray mountPoint;
+    QByteArray fsType;
 };
+
+// /proc/mounts escapes space, tab, newline and backslash as octal (\040, \011, \012, \134).
+[[nodiscard]] QByteArray unescapeMountField(QByteArrayView in) {
+    QByteArray out;
+    out.reserve(in.size());
+    for (qsizetype i = 0; i < in.size();) {
+        if (in[i] == '\\' && i + 3 < in.size()) {
+            const char a = in[i + 1];
+            const char b = in[i + 2];
+            const char c = in[i + 3];
+            if (a >= '0' && a <= '7' && b >= '0' && b <= '7' && c >= '0' && c <= '7') {
+                out.append(static_cast<char>(((a - '0') << 6) | ((b - '0') << 3) | (c - '0')));
+                i += 4;
+                continue;
+            }
+        }
+        out.append(in[i]);
+        ++i;
+    }
+    return out;
+}
+
+// Reads the mount table without touching any of the mounted filesystems.
+//
+// QStorageInfo::mountedVolumes() cannot be used here: it stats every entry as it builds the
+// list, and stat'ing an autofs mount point triggers the automount. When the backing device is
+// absent that blocks uninterruptibly (state D, wchan autofs_wait) and never returns, which
+// wedges whichever thread called it. Filtering has to happen off the raw table, before
+// anything stats a path.
+//
+// Dropping autofs entries does not lose real filesystems: while an automount is actually
+// mounted, /proc/mounts carries both the autofs entry and the real one covering the same
+// mount point, and only the latter reports usable sizes.
+[[nodiscard]] QList<MountPoint> readMounts() {
+    QFile file(QStringLiteral("/proc/mounts"));
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qCWarning(lcStorage) << "Failed to open /proc/mounts:" << file.errorString();
+        return {};
+    }
+
+    QList<MountPoint> mounts;
+    while (!file.atEnd()) {
+        const QList<QByteArray> fields = file.readLine().trimmed().split(' ');
+        if (fields.size() < 3) {
+            continue;
+        }
+        mounts.append({ unescapeMountField(fields.at(0)), unescapeMountField(fields.at(1)),
+            unescapeMountField(fields.at(2)) });
+    }
+    return mounts;
+}
 
 [[nodiscard]] QString sysfsRealPath(uint major, uint minor) {
     const QString link = QStringLiteral("/sys/dev/block/%1:%2").arg(major).arg(minor);
@@ -98,7 +152,15 @@ QStringList resolveByDevt(uint major, uint minor, int depth) {
 } // namespace
 
 Storage::Storage(QObject* parent)
-    : TickingService(parent) {}
+    : TickingService(parent)
+    , m_watcher(new QFutureWatcher<QHash<QString, DiskAccum>>(this)) {
+    QObject::connect(m_watcher, &QFutureWatcher<QHash<QString, DiskAccum>>::finished, this, [this]() {
+        m_scanInFlight = false;
+        if (m_watcher->future().resultCount() > 0) {
+            applyDisks(m_watcher->result());
+        }
+    });
+}
 
 qreal Storage::percentage() const {
     qreal totalUsed = 0.0;
@@ -143,8 +205,8 @@ void Storage::setManualPrimaryDisk(DiskInfo* disk) {
         return;
     }
     m_manualPrimaryDisk = disk;
-    emit manualPrimaryDiskChanged();
-    emit primaryDiskChanged();
+    Q_EMIT manualPrimaryDiskChanged();
+    Q_EMIT primaryDiskChanged();
 }
 
 DiskInfo* Storage::primaryDisk() const {
@@ -204,7 +266,18 @@ QStringList Storage::resolveToPhysicalDisks(const QString& devicePath) {
 }
 
 void Storage::tick() {
-    const qreal prevPercentage = percentage();
+    // Stating a mount can block for as long as the kernel takes to give up on it, so the
+    // scan runs off the main thread and a new one only starts once the last has landed.
+    if (m_scanInFlight) {
+        qCDebug(lcStorage) << "Previous scan still running, skipping tick";
+        return;
+    }
+
+    m_scanInFlight = true;
+    m_watcher->setFuture(QtConcurrent::run(&Storage::scanDisks));
+}
+
+QHash<QString, DiskAccum> Storage::scanDisks() {
     QHash<QString, Accum> byDisk;
 
     // Multiple mounts can share a single backing filesystem (btrfs subvolumes,
@@ -215,17 +288,20 @@ void Storage::tick() {
         quint64 usedBytes = 0;
         bool hasRoot = false;
         QByteArray device;
-        QByteArray fsType;
     };
 
     QHash<QByteArray, DeviceEntry> byDevice;
 
-    const auto mountedVols = QStorageInfo::mountedVolumes();
-    for (const QStorageInfo& v : mountedVols) {
-        if (!v.isReady() || !v.isValid() || v.bytesTotal() <= 0) {
+    const QList<MountPoint> mounts = readMounts();
+    for (const MountPoint& m : mounts) {
+        // Filter on the raw mount table first - constructing a QStorageInfo below stats the
+        // mount point, which is exactly what must not happen for autofs and friends.
+        if (isPseudoFs(QByteArrayView(m.fsType))) {
             continue;
         }
-        if (isPseudoFs(QByteArrayView(v.fileSystemType()))) {
+
+        const QStorageInfo v(QString::fromLocal8Bit(m.mountPoint));
+        if (!v.isReady() || !v.isValid() || v.bytesTotal() <= 0) {
             continue;
         }
 
@@ -237,7 +313,6 @@ void Storage::tick() {
 
         DeviceEntry& e = byDevice[device];
         e.device = device;
-        e.fsType = v.fileSystemType();
         e.totalBytes = totalBytes;
         e.usedBytes = usedBytes;
         e.hasRoot = e.hasRoot || isRoot;
@@ -247,22 +322,6 @@ void Storage::tick() {
         const DeviceEntry& e = it.value();
         const QStringList disks = resolveToPhysicalDisks(QString::fromLocal8Bit(e.device));
         if (disks.isEmpty()) {
-            // ZFS has no /dev block device to resolve — its "device" is a
-            // "pool/dataset" name (e.g. rpool/root), so resolveToPhysicalDisks
-            // returns nothing and the whole pool would be dropped. Fall back to
-            // keying by the pool name. Datasets in a pool share the pool's free
-            // space, so keep a single representative entry per pool (preferring
-            // the root dataset, else the largest) rather than summing them.
-            if (e.fsType == "zfs") {
-                const qsizetype slash = e.device.indexOf('/');
-                const QString pool = QString::fromLocal8Bit(slash > 0 ? e.device.left(slash) : e.device);
-                Accum& a = byDisk[pool];
-                if (!a.hasRoot && (e.hasRoot || e.totalBytes > a.totalBytes)) {
-                    a.usedBytes = e.usedBytes;
-                    a.totalBytes = e.totalBytes;
-                    a.hasRoot = e.hasRoot;
-                }
-            }
             continue;
         }
         for (const QString& d : disks) {
@@ -275,6 +334,12 @@ void Storage::tick() {
             a.hasRoot = a.hasRoot || e.hasRoot;
         }
     }
+
+    return byDisk;
+}
+
+void Storage::applyDisks(const QHash<QString, DiskAccum>& byDisk) {
+    const qreal prevPercentage = percentage();
 
     QHash<QString, DiskInfo*> existing;
     existing.reserve(m_disks.size());
@@ -314,16 +379,16 @@ void Storage::tick() {
     m_disks = next;
 
     if (listChanged) {
-        emit disksChanged();
+        Q_EMIT disksChanged();
     }
     if (std::abs(percentage() - prevPercentage) > 0.0001) {
-        emit percentageChanged();
+        Q_EMIT percentageChanged();
     }
     if (manualCleared) {
-        emit manualPrimaryDiskChanged();
+        Q_EMIT manualPrimaryDiskChanged();
     }
     if (primaryDisk() != prevPrimary) {
-        emit primaryDiskChanged();
+        Q_EMIT primaryDiskChanged();
     }
 }
 

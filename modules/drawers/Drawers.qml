@@ -14,7 +14,13 @@ Variants {
 
         Exclusions {
             screen: scope.modelData
-            bar: content.bar
+            barLeft: content.barLeft
+            barRight: content.barRight
+            barTop: content.barTop
+            barBottom: content.barBottom
+            dockReserves: content.dockReserves
+            dockPosition: content.dockPosition
+            dockThickness: content.dockThickness
         }
 
         ContentWindow {

@@ -15,7 +15,12 @@ Singleton {
     readonly property var toplevels: Hyprland.toplevels
     readonly property var workspaces: Hyprland.workspaces
     readonly property var monitors: Hyprland.monitors
-    readonly property bool usingLua: Hyprland.usingLua
+
+    // Whether this shell has blanked the outputs. Hyprland emits no dpms-changed event and
+    // the dpmsStatus in `hyprctl monitors` only updates on a full query, so this tracks the
+    // calls we make -- which is all of them, since IdleMonitors is the only caller of
+    // setDpms(). An external `hyprctl dispatch dpms` would not be reflected here.
+    property bool screensOff: false
 
     readonly property HyprlandToplevel activeToplevel: {
         const t = Hyprland.activeToplevel;
@@ -42,8 +47,54 @@ Singleton {
 
     signal configReloaded
 
-    function dispatch(request: string): void {
-        Hyprland.dispatch(request);
+    // Under a lua config there is no string form of a dispatcher: `dispatch <cmd>` is parsed
+    // as lua, and hl.dispatch() wants a dispatcher object built from hl.dsp.*, not a string.
+    // So every dispatch goes through eval with a typed hl.dsp expression.
+    function luaStr(s: string): string {
+        return `"${String(s).replace(/\\/g, "\\\\").replace(/"/g, "\\\"")}"`;
+    }
+
+    function dispatch(expr: string): void {
+        extras.batchMessage([`eval hl.dispatch(${expr})`]);
+    }
+
+    // Window dispatchers take a Hyprland window *selector*, not a bare address — a plain
+    // "0x..." resolves to nothing and hl.focus warns "window not found".
+    function windowSelector(address: string): string {
+        return luaStr(`address:0x${address}`);
+    }
+
+    function focusWindow(address: string): void {
+        dispatch(`hl.dsp.focus({ window = ${windowSelector(address)} })`);
+    }
+
+    function closeWindow(address: string): void {
+        dispatch(`hl.dsp.window.close({ window = ${windowSelector(address)} })`);
+    }
+
+    function toggleFloating(address: string): void {
+        dispatch(`hl.dsp.window.float({ window = ${windowSelector(address)} })`);
+    }
+
+    function togglePinned(address: string): void {
+        dispatch(`hl.dsp.window.pin({ window = ${windowSelector(address)} })`);
+    }
+
+    function moveWindowToWorkspace(address: string, workspace: string): void {
+        dispatch(`hl.dsp.window.move({ window = ${windowSelector(address)}, workspace = ${luaStr(workspace)} })`);
+    }
+
+    function switchWorkspace(workspace: string): void {
+        dispatch(`hl.dsp.focus({ workspace = ${luaStr(workspace)} })`);
+    }
+
+    function toggleSpecialWorkspace(name: string): void {
+        dispatch(`hl.dsp.workspace.toggle_special(${luaStr(name)})`);
+    }
+
+    function setDpms(state: string): void {
+        dispatch(`hl.dsp.dpms(${luaStr(state)})`);
+        root.screensOff = state === "off";
     }
 
     function cycleSpecialWorkspace(direction: string): void {
@@ -58,11 +109,11 @@ Singleton {
             if (lastSpecialWorkspace) {
                 const workspace = workspaces.values.find(w => w.name === lastSpecialWorkspace);
                 if (workspace && workspace.lastIpcObject.windows > 0) {
-                    dispatch(usingLua ? `hl.dsp.focus({ workspace = "${lastSpecialWorkspace}" })` : `workspace ${lastSpecialWorkspace}`);
+                    switchWorkspace(lastSpecialWorkspace);
                     return;
                 }
             }
-            dispatch(usingLua ? `hl.dsp.focus({ workspace = "${openSpecials[0].name}" })` : `workspace ${openSpecials[0].name}`);
+            switchWorkspace(openSpecials[0].name);
             return;
         }
 
@@ -76,7 +127,7 @@ Singleton {
                 nextIndex = (currentIndex - 1 + openSpecials.length) % openSpecials.length;
         }
 
-        dispatch(usingLua ? `hl.dsp.focus({ workspace = "${openSpecials[nextIndex].name}" })` : `workspace ${openSpecials[nextIndex].name}`);
+        switchWorkspace(openSpecials[nextIndex].name);
     }
 
     function monitorNames(): list<string> {
@@ -88,11 +139,10 @@ Singleton {
     }
 
     function reloadDynamicConfs(): void {
-        if (usingLua) {
-            extras.batchMessage(['eval hl.bind("Caps_Lock", hl.dsp.global("caelestia:refreshDevices"), { locked = true, non_consuming = true, ignore_mods = true, release = true })', 'eval hl.bind("Num_Lock", hl.dsp.global("caelestia:refreshDevices"), { locked = true, non_consuming = true, ignore_mods = true, release = true })']);
-        } else {
-            extras.batchMessage(["keyword bindlni ,Caps_Lock,global,caelestia:refreshDevices", "keyword bindlni ,Num_Lock,global,caelestia:refreshDevices"]);
-        }
+        // `keyword` is rejected under a lua config, so these go through eval.
+        // locked/non_consuming/ignore_mods are the lni flags of the old bind.
+        const opts = "{ locked = true, non_consuming = true, ignore_mods = true }";
+        extras.batchMessage([`eval hl.bind("Caps_Lock", hl.dsp.global("caelestia:refreshDevices"), ${opts})`, `eval hl.bind("Num_Lock", hl.dsp.global("caelestia:refreshDevices"), ${opts})`]);
     }
 
     Component.onCompleted: reloadDynamicConfs()
@@ -118,7 +168,7 @@ Singleton {
     }
 
     onKbLayoutFullChanged: {
-        if (hadKeyboard && GlobalConfig.utilities.toasts.kbLayoutChanged)
+        if (hadKeyboard && GlobalConfig.utilities.toasts.kbLayoutChanged && keyboard !== null)
             Toaster.toast(qsTr("Keyboard layout changed"), qsTr("Layout changed to: %1").arg(kbLayoutFull), "keyboard");
 
         hadKeyboard = !!keyboard;
@@ -223,7 +273,5 @@ Singleton {
 
     HyprExtras {
         id: extras
-
-        usingLua: Hyprland.usingLua
     }
 }

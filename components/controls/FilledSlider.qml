@@ -12,18 +12,20 @@ Slider {
     property real oldValue
     property bool initialized
 
+    // `vertical` below is Slider's own readonly property, derived from `orientation`.
     orientation: Qt.Vertical
 
+    // The fill grows from the low end of the track — the bottom for a vertical slider, the
+    // left for a horizontal one — up to the handle.
     background: StyledRect {
         color: Colours.layer(Colours.palette.m3surfaceContainer, 2)
         radius: Tokens.rounding.full
 
         StyledRect {
-            anchors.left: parent.left
-            anchors.right: parent.right
-
-            y: root.handle.y
-            implicitHeight: parent.height - y
+            x: 0
+            y: root.vertical ? root.handle.y : 0
+            implicitWidth: root.vertical ? parent.width : root.handle.x + root.handle.width
+            implicitHeight: root.vertical ? parent.height - root.handle.y : parent.height
 
             color: Colours.palette.m3secondary
             radius: parent.radius
@@ -35,9 +37,10 @@ Slider {
 
         property alias moving: icon.moving
 
-        y: root.visualPosition * (root.availableHeight - height)
-        implicitWidth: root.width
-        implicitHeight: root.width
+        x: root.vertical ? 0 : root.visualPosition * (root.availableWidth - width)
+        y: root.vertical ? root.visualPosition * (root.availableHeight - height) : 0
+        implicitWidth: root.vertical ? root.width : root.height
+        implicitHeight: root.vertical ? root.width : root.height
 
         Elevation {
             anchors.fill: parent

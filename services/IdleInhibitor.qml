@@ -3,6 +3,8 @@ pragma Singleton
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import Caelestia.Config
+import qs.services
 
 Singleton {
     id: root
@@ -11,8 +13,12 @@ Singleton {
     readonly property alias enabledSince: props.enabledSince
 
     onEnabledChanged: {
-        if (enabled)
+        if (enabled) {
             props.enabledSince = new Date();
+            Sounds.play(GlobalConfig.utilities.sounds.serviceOn);
+        } else {
+            Sounds.play(GlobalConfig.utilities.sounds.serviceOff);
+        }
     }
 
     PersistentProperties {

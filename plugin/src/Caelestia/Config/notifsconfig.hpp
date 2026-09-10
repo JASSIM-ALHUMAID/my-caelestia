@@ -19,6 +19,12 @@ class NotifsConfig : public ConfigObject {
     CONFIG_GLOBAL_PROPERTY(bool, actionOnClick, false)
     CONFIG_PROPERTY(int, groupPreviewNum, 3)
     CONFIG_PROPERTY(bool, openExpanded, false)
+    // "hugged" | "floating" - how the popup list appears relative to the screen edge
+    CONFIG_PROPERTY(QString, popoutMode, u"hugged"_s)
+    // Distance in px between a floating popup and the screen edge. Ignored in hugged mode.
+    CONFIG_PROPERTY(int, popoutGap, 12)
+    // How long in ms to wait after cursor leaves before restarting auto-expire timers.
+    CONFIG_PROPERTY(int, hoverGrace, 200)
 
 public:
     explicit NotifsConfig(QObject* parent = nullptr)

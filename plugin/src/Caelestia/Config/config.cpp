@@ -4,6 +4,8 @@
 #include "barconfig.hpp"
 #include "borderconfig.hpp"
 #include "dashboardconfig.hpp"
+#include "dockconfig.hpp"
+#include "edgesconfig.hpp"
 #include "generalconfig.hpp"
 #include "launcherconfig.hpp"
 #include "lockconfig.hpp"
@@ -40,6 +42,8 @@ GlobalConfig::GlobalConfig(QObject* parent)
     , m_bar(new BarConfig(this))
     , m_border(new BorderConfig(this))
     , m_dashboard(new DashboardConfig(this))
+    , m_dock(new DockConfig(this))
+    , m_edges(new EdgesConfig(this))
     , m_launcher(new LauncherConfig(this))
     , m_lock(new LockConfig(this))
     , m_nexus(new NexusConfig(this))
@@ -62,6 +66,8 @@ GlobalConfig::GlobalConfig(GlobalConfig* fallback, const QString& filePath, cons
     , m_bar(new BarConfig(this))
     , m_border(new BorderConfig(this))
     , m_dashboard(new DashboardConfig(this))
+    , m_dock(new DockConfig(this))
+    , m_edges(new EdgesConfig(this))
     , m_launcher(new LauncherConfig(this))
     , m_lock(new LockConfig(this))
     , m_nexus(new NexusConfig(this))

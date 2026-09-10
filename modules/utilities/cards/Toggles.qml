@@ -14,31 +14,33 @@ import qs.modules.bar.popouts as BarPopouts
 StyledRect {
     id: root
 
-    required property ScreenState screenState
+    required property DrawerVisibilities visibilities
     required property BarPopouts.Wrapper popouts
 
     readonly property var quickToggles: {
         const seenIds = new Set();
 
-        return Config.utilities.quickToggles.values.filter(item => {
-            if (!item.enabled)
+        return Config.utilities.quickToggles.filter(item => {
+            if (!(item.enabled ?? true))
                 return false;
 
             if (seenIds.has(item.id)) {
                 return false;
             }
 
+            seenIds.add(item.id);
+
             if (item.id === "vpn") {
-                return GlobalConfig.utilities.vpn.selectedProvider.length > 0;
+                return GlobalConfig.utilities.vpn.provider.some(p => typeof p === "object" ? (p.enabled === true) : false);
             }
 
-            seenIds.add(item.id);
             return true;
         });
     }
     readonly property int splitIndex: Math.ceil(quickToggles.length / 2)
     readonly property bool needExtraRow: quickToggles.length > 6
 
+    Layout.fillWidth: true
     implicitHeight: layout.implicitHeight + Tokens.padding.extraLargeIncreased
 
     radius: Tokens.rounding.large
@@ -117,7 +119,7 @@ StyledRect {
                         inactiveOnColour: Colours.palette.m3onSurfaceVariant
                         isToggle: false
                         onClicked: {
-                            root.screenState.utilities = false;
+                            root.visibilities.utilities = false;
                             WindowFactory.create();
                         }
                     }
@@ -139,11 +141,19 @@ StyledRect {
                     }
                 }
                 DelegateChoice {
+                    roleValue: "hyprsunset"
+                    delegate: Toggle {
+                        icon: "bedtime"
+                        checked: HyprSunset.enabled
+                        onClicked: HyprSunset.toggle()
+                    }
+                }
+                DelegateChoice {
                     roleValue: "vpn"
                     delegate: Toggle {
                         icon: "vpn_key"
                         checked: VPN.connected && VPN.status.state !== "needs-auth" && VPN.status.state !== "error"
-                        enabled: !VPN.connecting && !VPN.disconnecting
+                        enabled: !VPN.connecting
                         isToggle: VPN.status.state !== "needs-auth" && VPN.status.state !== "error"
                         inactiveOnColour: Colours.palette.m3onSurfaceVariant
                         onClicked: VPN.toggle()

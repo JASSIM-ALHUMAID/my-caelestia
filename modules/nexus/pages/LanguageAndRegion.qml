@@ -38,135 +38,141 @@ PageBase {
         spacing: Tokens.spacing.extraSmall / 2
 
         // Language
-        SectionHeader {
+        SettingsSection {
             first: true
-            text: qsTr("Language")
-        }
+            expanded: true
+            title: qsTr("Language")
 
-        // Read-only: the shell follows the system locale (no in-shell translations yet)
-        ConnectedRect {
-            Layout.fillWidth: true
-            first: true
-            last: true
-            implicitHeight: localeLayout.implicitHeight + localeLayout.anchors.margins * 2
+            // Read-only: the shell follows the system locale (no in-shell translations yet)
 
-            RowLayout {
-                id: localeLayout
+            ConnectedRect {
+                Layout.fillWidth: true
+                first: true
+                last: true
+                implicitHeight: localeLayout.implicitHeight + localeLayout.anchors.margins * 2
 
-                anchors.fill: parent
-                anchors.margins: Tokens.padding.medium
-                anchors.leftMargin: Tokens.padding.largeIncreased
-                anchors.rightMargin: Tokens.padding.largeIncreased
-                spacing: Tokens.spacing.medium
+                RowLayout {
+                    id: localeLayout
 
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 0
+                    anchors.fill: parent
+                    anchors.margins: Tokens.padding.medium
+                    anchors.leftMargin: Tokens.padding.largeIncreased
+                    anchors.rightMargin: Tokens.padding.largeIncreased
+                    spacing: Tokens.spacing.medium
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 0
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: qsTr("System language")
+                            font: Tokens.font.body.small
+                            elide: Text.ElideRight
+                        }
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: qsTr("Follows your system locale (%1)").arg(Qt.locale().name)
+                            color: Colours.palette.m3outline
+                            font: Tokens.font.label.small
+                            elide: Text.ElideRight
+                        }
+                    }
 
                     StyledText {
-                        Layout.fillWidth: true
-                        text: qsTr("System language")
+                        text: Qt.locale().nativeLanguageName || Qt.locale().name
+                        color: Colours.palette.m3onSurfaceVariant
                         font: Tokens.font.body.small
-                        elide: Text.ElideRight
                     }
-
-                    StyledText {
-                        Layout.fillWidth: true
-                        text: qsTr("Follows your system locale (%1)").arg(Qt.locale().name)
-                        color: Colours.palette.m3outline
-                        font: Tokens.font.label.small
-                        elide: Text.ElideRight
-                    }
-                }
-
-                StyledText {
-                    text: Qt.locale().nativeLanguageName || Qt.locale().name
-                    color: Colours.palette.m3onSurfaceVariant
-                    font: Tokens.font.body.small
                 }
             }
         }
 
         // Weather
-        SectionHeader {
-            text: qsTr("Weather")
-        }
+        SettingsSection {
+            title: qsTr("Weather")
 
-        // Placeholder until the map-based location picker lands
-        ConnectedRect {
-            Layout.fillWidth: true
-            first: true
-            last: true
-            implicitHeight: comingSoon.implicitHeight + Tokens.padding.extraLarge * 2
+            // Placeholder until the map-based location picker lands
 
-            ColumnLayout {
-                id: comingSoon
+            ConnectedRect {
+                Layout.fillWidth: true
+                first: true
+                last: true
+                implicitHeight: comingSoon.implicitHeight + Tokens.padding.extraLarge * 2
 
-                anchors.centerIn: parent
-                width: parent.width - Tokens.padding.largeIncreased * 2
-                spacing: Tokens.padding.extraSmall
+                ColumnLayout {
+                    id: comingSoon
 
-                MaterialIcon {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: "map"
-                    color: Colours.palette.m3outlineVariant
-                    fontStyle: Tokens.font.icon.extraLarge
-                }
+                    anchors.centerIn: parent
+                    width: parent.width - Tokens.padding.largeIncreased * 2
+                    spacing: Tokens.padding.extraSmall
 
-                StyledText {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: qsTr("Location picker coming soon")
-                    color: Colours.palette.m3outlineVariant
-                    font: Tokens.font.title.small
-                }
+                    MaterialIcon {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: "map"
+                        color: Colours.palette.m3outlineVariant
+                        font: Tokens.font.icon.extraLarge
+                    }
 
-                StyledText {
-                    Layout.fillWidth: true
-                    horizontalAlignment: Text.AlignHCenter
-                    wrapMode: Text.WordWrap
-                    text: qsTr("Choose your weather location on a map in a future update")
-                    color: Colours.palette.m3outlineVariant
-                    font: Tokens.font.body.small
+                    StyledText {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: qsTr("Location picker coming soon")
+                        color: Colours.palette.m3outlineVariant
+                        font: Tokens.font.title.small
+                    }
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.WordWrap
+                        text: qsTr("Choose your weather location on a map in a future update")
+                        color: Colours.palette.m3outlineVariant
+                        font: Tokens.font.body.small
+                    }
                 }
             }
         }
 
         // Units
-        SectionHeader {
-            text: qsTr("Units")
-        }
+        SettingsSection {
+            title: qsTr("Units")
 
-        SelectRow {
-            first: true
-            label: qsTr("Temperature")
-            subtext: qsTr("Units for weather temperatures")
-            menuItems: root.tempItems
-            active: root.tempItems[GlobalConfig.services.useFahrenheit ? 1 : 0]
-            onSelected: item => GlobalConfig.services.useFahrenheit = root.tempItems.indexOf(item) === 1
-        }
+            SelectRow {
+                Layout.fillWidth: true
+                first: true
+                label: qsTr("Temperature")
+                subtext: qsTr("Units for weather temperatures")
+                menuItems: root.tempItems
+                active: root.tempItems[GlobalConfig.services.useFahrenheit ? 1 : 0]
+                onSelected: item => GlobalConfig.services.useFahrenheit = root.tempItems.indexOf(item) === 1
+            }
 
-        SelectRow {
-            last: true
-            label: qsTr("System temperatures")
-            subtext: qsTr("Units for CPU and GPU temperatures")
-            menuItems: root.tempItems
-            active: root.tempItems[GlobalConfig.services.useFahrenheitPerformance ? 1 : 0]
-            onSelected: item => GlobalConfig.services.useFahrenheitPerformance = root.tempItems.indexOf(item) === 1
+            SelectRow {
+                Layout.fillWidth: true
+                last: true
+                label: qsTr("System temperatures")
+                subtext: qsTr("Units for CPU and GPU temperatures")
+                menuItems: root.tempItems
+                active: root.tempItems[GlobalConfig.services.useFahrenheitPerformance ? 1 : 0]
+                onSelected: item => GlobalConfig.services.useFahrenheitPerformance = root.tempItems.indexOf(item) === 1
+            }
         }
 
         // Time & date
-        SectionHeader {
-            text: qsTr("Time & date")
-        }
+        SettingsSection {
+            title: qsTr("Time & date")
 
-        SelectRow {
-            first: true
-            last: true
-            label: qsTr("Clock format")
-            subtext: qsTr("How times are shown across the shell")
-            menuItems: root.clockItems
-            active: root.clockItems[GlobalConfig.services.useTwelveHourClock ? 1 : 0]
-            onSelected: item => GlobalConfig.services.useTwelveHourClock = root.clockItems.indexOf(item) === 1
+            SelectRow {
+                Layout.fillWidth: true
+                first: true
+                last: true
+                label: qsTr("Clock format")
+                subtext: qsTr("How times are shown across the shell")
+                menuItems: root.clockItems
+                active: root.clockItems[GlobalConfig.services.useTwelveHourClock ? 1 : 0]
+                onSelected: item => GlobalConfig.services.useTwelveHourClock = root.clockItems.indexOf(item) === 1
+            }
         }
     }
 }

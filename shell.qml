@@ -9,20 +9,24 @@ import "modules/drawers"
 import "modules/background"
 import "modules/areapicker"
 import "modules/lock"
-import QtQuick
 import Quickshell
 import qs.services
+import qs.modules.screensaver
 
 ShellRoot {
-    id: root
+    // Forces the HyprSunset singleton alive at startup. Singletons are created lazily, and
+    // its only other references are the utilities toggle and the Nexus page - without this
+    // the schedule wouldn't run (and IPC wouldn't register) until one of those was opened.
+    readonly property var hyprSunsetService: HyprSunset
+    // Forces the CountdownTimer singleton alive so its timer ticks and toasts with no UI open.
+    readonly property var countdownTimerService: CountdownTimer
+    // Forces Sounds alive so the startup chime fires at all.
+    readonly property var soundsService: Sounds
+    // Forces the Screensaver singleton alive so its idle monitor and overlay windows exist even
+    // with no UI open.
+    readonly property var screensaverService: Screensaver
 
     settings.watchFiles: true
-
-    Binding {
-        target: ShellState
-        property: "shellRoot"
-        value: root
-    }
 
     GSFLoader {}
     ServiceLoader {}
@@ -37,6 +41,8 @@ ShellRoot {
     ConfigToasts {}
     Shortcuts {}
     BatteryMonitor {}
+    HyprVarsWriter {}
+    SyncApps {}
     IdleMonitors {
         lock: lock
     }

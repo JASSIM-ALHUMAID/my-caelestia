@@ -9,7 +9,10 @@ class WavyLine : public QQuickPaintedItem {
     Q_OBJECT
     QML_ELEMENT
 
+    // In filled mode the stroke is not drawn, so lineWidth stops being a thickness and
+    // acts purely as the amplitude scale (amplitude = lineWidth * amplitudeMultiplier)
     Q_PROPERTY(int lineWidth READ lineWidth WRITE setLineWidth NOTIFY lineWidthChanged FINAL)
+    Q_PROPERTY(bool filled READ filled WRITE setFilled NOTIFY filledChanged FINAL)
     Q_PROPERTY(qreal amplitudeMultiplier READ amplitudeMultiplier WRITE setAmplitudeMultiplier NOTIFY
             amplitudeMultiplierChanged FINAL)
     Q_PROPERTY(int frequency READ frequency WRITE setFrequency NOTIFY frequencyChanged FINAL)
@@ -34,6 +37,9 @@ public:
 
     [[nodiscard]] int lineWidth() const;
     void setLineWidth(int lineWidth);
+
+    [[nodiscard]] bool filled() const;
+    void setFilled(bool filled);
 
     [[nodiscard]] qreal amplitudeMultiplier() const;
     void setAmplitudeMultiplier(qreal amplitudeMultiplier);
@@ -72,6 +78,7 @@ public:
 
 signals:
     void lineWidthChanged();
+    void filledChanged();
     void amplitudeMultiplierChanged();
     void frequencyChanged();
     void startXChanged();
@@ -89,6 +96,7 @@ private:
     void paintArc(QPainter* painter);
 
     int m_lineWidth;
+    bool m_filled;
     qreal m_amplitudeMultiplier;
     int m_frequency;
     qreal m_startX;

@@ -14,7 +14,7 @@ LazyListView {
     required property list<var> notifs
     required property bool expanded
     required property Flickable container
-    required property ScreenState screenState
+    required property DrawerVisibilities visibilities
 
     signal requestToggleExpand(expand: bool)
 
@@ -38,7 +38,7 @@ LazyListView {
     model: ScriptModel {
         values: {
             if (root.expanded)
-                return root.notifs as Array;
+                return root.notifs;
 
             let count = 0;
             let i = 0;
@@ -49,7 +49,7 @@ LazyListView {
                 i++;
             }
 
-            return root.notifs.slice(0, i) as Array;
+            return root.notifs.slice(0, i);
         }
     }
 
@@ -126,7 +126,7 @@ LazyListView {
                 modelData: notif.modelData
                 props: root.props
                 expanded: root.expanded
-                screenState: root.screenState
+                visibilities: root.visibilities
             }
 
             Behavior on y {

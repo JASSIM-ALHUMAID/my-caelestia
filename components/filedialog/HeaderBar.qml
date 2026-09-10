@@ -43,6 +43,25 @@ StyledRect {
             }
         }
 
+        Item {
+            implicitWidth: implicitHeight
+            implicitHeight: visibilityIcon.implicitHeight + Tokens.padding.small
+
+            StateLayer {
+                radius: Tokens.rounding.medium
+                onClicked: root.dialog.showHidden = !root.dialog.showHidden
+            }
+
+            MaterialIcon {
+                id: visibilityIcon
+
+                anchors.centerIn: parent
+                text: root.dialog.showHidden ? "visibility_off" : "visibility"
+                color: Colours.palette.m3onSurfaceVariant
+                grade: 200
+            }
+        }
+
         StyledRect {
             Layout.fillWidth: true
 

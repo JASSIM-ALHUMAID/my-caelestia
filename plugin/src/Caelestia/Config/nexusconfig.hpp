@@ -9,7 +9,6 @@ class NexusConfig : public ConfigObject {
     QML_ANONYMOUS
 
     CONFIG_PROPERTY(int, wallpapersPerRow, 4)
-    CONFIG_PROPERTY(int, maxNetworksShown, 5)
     CONFIG_GLOBAL_PROPERTY(int, networkRescanInterval, 15000)
 
 public:

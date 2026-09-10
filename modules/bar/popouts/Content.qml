@@ -6,7 +6,6 @@ import Quickshell
 import Quickshell.Services.SystemTray
 import Caelestia.Config
 import qs.components
-import qs.services
 
 Item {
     id: root
@@ -28,6 +27,15 @@ Item {
             name: "activewindow"
             sourceComponent: ActiveWindow {
                 popouts: root.popouts
+                toplevel: root.popouts.activeWindowToplevel
+            }
+        }
+
+        Popout {
+            name: "dock"
+            sourceComponent: ActiveWindow {
+                popouts: root.popouts
+                toplevel: root.popouts.dockToplevel
             }
         }
 
@@ -35,9 +43,17 @@ Item {
             id: networkPopout
 
             name: "network"
-            sourceComponent: Network {
+            sourceComponent: NetworkPopout {
                 popouts: root.popouts
-                view: Nmcli.activeEthernet ? "ethernet" : "wireless"
+                view: "wireless"
+            }
+        }
+
+        Popout {
+            name: "ethernet"
+            sourceComponent: NetworkPopout {
+                popouts: root.popouts
+                view: "ethernet"
             }
         }
 
@@ -49,7 +65,7 @@ Item {
                 id: passwordComponent
 
                 popouts: root.popouts
-                network: (networkPopout.item as Network)?.passwordNetwork ?? null
+                network: (networkPopout.item as NetworkPopout)?.passwordNetwork ?? null
             }
 
             Connections {
@@ -57,15 +73,15 @@ Item {
                     // Update network immediately when password popout becomes active
                     if (root.popouts.currentName === "wirelesspassword") {
                         // Set network immediately if available
-                        if ((networkPopout.item as Network)?.passwordNetwork) {
+                        if ((networkPopout.item as NetworkPopout)?.passwordNetwork) {
                             if (passwordPopout.item) {
-                                (passwordPopout.item as WirelessPassword).network = (networkPopout.item as Network).passwordNetwork;
+                                (passwordPopout.item as WirelessPassword).network = (networkPopout.item as NetworkPopout).passwordNetwork;
                             }
                         }
                         // Also try after a short delay in case networkPopout.item wasn't ready
                         Qt.callLater(() => {
-                            if (passwordPopout.item && (networkPopout.item as Network)?.passwordNetwork) {
-                                (passwordPopout.item as WirelessPassword).network = (networkPopout.item as Network).passwordNetwork;
+                            if (passwordPopout.item && (networkPopout.item as NetworkPopout)?.passwordNetwork) {
+                                (passwordPopout.item as WirelessPassword).network = (networkPopout.item as NetworkPopout).passwordNetwork;
                             }
                         }, 100);
                     }
@@ -79,8 +95,8 @@ Item {
                     // When network popout loads, update password popout if it's active
                     if (root.popouts.currentName === "wirelesspassword" && passwordPopout.item) {
                         Qt.callLater(() => {
-                            if ((networkPopout.item as Network)?.passwordNetwork) {
-                                (passwordPopout.item as WirelessPassword).network = (networkPopout.item as Network).passwordNetwork;
+                            if ((networkPopout.item as NetworkPopout)?.passwordNetwork) {
+                                (passwordPopout.item as WirelessPassword).network = (networkPopout.item as NetworkPopout).passwordNetwork;
                             }
                         });
                     }
@@ -119,9 +135,26 @@ Item {
             sourceComponent: LockStatus {}
         }
 
+        Popout {
+            name: "layoutpicker"
+            sourceComponent: LayoutPicker {}
+        }
+
+        Popout {
+            name: "timer"
+            sourceComponent: TimerPopout {}
+        }
+
+        Popout {
+            name: "baroverflow"
+            sourceComponent: BarOverflow {
+                popouts: root.popouts
+            }
+        }
+
         Repeater {
             model: ScriptModel {
-                values: SystemTray.items.values.filter(i => !GlobalConfig.bar.tray.hiddenIcons.includes(i.id))
+                values: SystemTray.items.values.filter(i => !GlobalConfig.bar.trayHiddenIcons.includes(i.id))
             }
 
             Popout {

@@ -1,36 +1,38 @@
-pragma ComponentBehavior: Bound
-
 import QtQuick
 import QtQuick.Layouts
-import M3Shapes
 import Caelestia.Config
 import qs.components
 import qs.components.controls
 import qs.services
+import qs.modules.screensaver
 
 StyledRect {
     id: root
 
-    required property real centerScale
     required property int centerWidth
     required property var lock
 
-    implicitWidth: {
-        const w = centerWidth * 0.8;
-        return lock.pam.buffer ? w : Math.min(w, inputField.placeholderWidth + iconWrapper.implicitWidth + enterButton.implicitWidth + input.spacing * 2 + Tokens.padding.medium * 2);
-    }
+    implicitWidth: centerWidth * 0.8
     implicitHeight: input.implicitHeight + Tokens.padding.small
 
     color: Colours.tPalette.m3surfaceContainer
     radius: Tokens.rounding.full
 
     focus: true
+    Component.onCompleted: forceActiveFocus()
+
     onActiveFocusChanged: {
         if (!activeFocus)
             forceActiveFocus();
     }
 
     Keys.onPressed: event => {
+        if (Screensaver.showingOnLockScreen) {
+            event.accepted = true;
+            Screensaver.hide();
+            return;
+        }
+
         if (root.lock.unlocking)
             return;
 
@@ -38,10 +40,6 @@ StyledRect {
             inputField.placeholder.animate = false;
 
         root.lock.pam.handleKey(event);
-    }
-
-    Behavior on implicitWidth {
-        Anim {}
     }
 
     StateLayer {
@@ -58,45 +56,44 @@ StyledRect {
         spacing: Tokens.spacing.medium
 
         Item {
-            id: iconWrapper
-
             Layout.fillHeight: true
             implicitWidth: height
 
-            AnimLoader {
+            MaterialIcon {
+                id: fprintIcon
+
                 anchors.centerIn: parent
-                anchors.verticalCenterOffset: sourceComponent === iconComp ? 1 : 0
-                sourceComp: root.lock.pam.passwd.active || root.lock.pam.howdy.active ? loadingComp : iconComp
-            }
+                animate: true
+                text: {
+                    if (root.lock.pam.fprint.tries >= GlobalConfig.lock.maxFprintTries)
+                        return "fingerprint_off";
+                    if (root.lock.pam.fprint.active)
+                        return "fingerprint";
+                    return "lock";
+                }
+                color: root.lock.pam.fprint.tries >= GlobalConfig.lock.maxFprintTries ? Colours.palette.m3error : Colours.palette.m3onSurface
+                opacity: root.lock.pam.passwd.active ? 0 : 1
 
-            Component {
-                id: iconComp
-
-                MaterialIcon {
-                    animate: true
-                    text: {
-                        if (root.lock.pam.fprint.tries >= GlobalConfig.lock.maxFprintTries) {
-                            if (root.lock.pam.howdy.canAttempt)
-                                return "face";
-                            return "fingerprint_off";
-                        }
-                        if (root.lock.pam.fprint.active)
-                            return "fingerprint";
-                        if (root.lock.pam.howdy.canAttempt)
-                            return "face";
-                        return "lock";
+                Behavior on opacity {
+                    Anim {
+                        type: Anim.DefaultEffects
                     }
-                    color: !root.lock.pam.howdy.canAttempt && root.lock.pam.fprint.tries >= GlobalConfig.lock.maxFprintTries ? Colours.palette.m3error : Colours.palette.m3onSurfaceVariant
-                    fontStyle: Tokens.font.icon.builders.medium.scale(root.centerScale).build()
-                    fill: text === "face"
                 }
             }
 
-            Component {
-                id: loadingComp
+            Loader {
+                anchors.fill: parent
+                anchors.margins: Tokens.padding.small
 
-                LoadingIndicator {
-                    implicitSize: iconWrapper.height - Tokens.padding.small * 2
+                active: opacity > 0
+                opacity: root.lock.pam.passwd.active ? 1 : 0
+
+                sourceComponent: LoadingIndicator {}
+
+                Behavior on opacity {
+                    Anim {
+                        type: Anim.DefaultEffects
+                    }
                 }
             }
         }
@@ -107,45 +104,19 @@ StyledRect {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
-            centerScale: root.centerScale
             pam: root.lock.pam
         }
 
-        Item {
-            id: enterButton
-
+        StyledRect {
             implicitWidth: implicitHeight
-            implicitHeight: {
-                const h = enterIcon.implicitHeight + Tokens.padding.extraSmall * 2;
-                return h % 2 === 0 ? h : h + 1;
-            }
+            implicitHeight: enterIcon.implicitHeight + Tokens.padding.small
 
-            MaterialShape {
-                anchors.fill: parent
+            color: root.lock.pam.buffer ? Colours.palette.m3primary : Colours.layer(Colours.palette.m3surfaceContainerHigh, 2)
+            radius: Tokens.rounding.full
 
-                color: root.lock.pam.buffer ? Colours.palette.m3primary : Colours.layer(Colours.palette.m3surfaceContainerHigh, 2)
-                shape: root.lock.pam.buffer ? MaterialShape.Arrow : MaterialShape.Circle
-                scale: !root.lock.pam.buffer ? 1 : mouse.pressed ? 0.6 : mouse.containsMouse ? 0.8 : 0.7
-                rotation: 90
-
-                Behavior on scale {
-                    Anim {
-                        type: Anim.FastSpatial
-                    }
-                }
-
-                Behavior on color {
-                    CAnim {}
-                }
-
-                MouseArea {
-                    id: mouse
-
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: root.lock.pam.buffer ? Qt.PointingHandCursor : Qt.ArrowCursor
-                    onClicked: root.lock.pam.buffer && root.lock.pam.passwd.start()
-                }
+            StateLayer {
+                color: root.lock.pam.buffer ? Colours.palette.m3onPrimary : Colours.palette.m3onSurface
+                onClicked: root.lock.pam.passwd.start()
             }
 
             MaterialIcon {
@@ -153,15 +124,8 @@ StyledRect {
 
                 anchors.centerIn: parent
                 text: "arrow_forward"
-                color: Colours.palette.m3onSurfaceVariant
-                fontStyle: Tokens.font.icon.builders.medium.scale(root.centerScale * 1.2).build()
-                opacity: root.lock.pam.buffer ? 0 : 1
-
-                Behavior on opacity {
-                    Anim {
-                        type: Anim.DefaultEffects
-                    }
-                }
+                color: root.lock.pam.buffer ? Colours.palette.m3onPrimary : Colours.palette.m3onSurface
+                fontStyle: Tokens.font.icon.size(Tokens.font.icon.large.pointSize).weight(Font.Medium).build()
             }
         }
     }

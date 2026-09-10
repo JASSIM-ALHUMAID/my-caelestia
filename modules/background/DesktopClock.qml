@@ -6,6 +6,7 @@ import QtQuick.Layouts
 import Caelestia.Config
 import qs.components
 import qs.services
+import qs.modules.nexus
 
 Item {
     id: root
@@ -23,13 +24,29 @@ Item {
     readonly property color safeSecondary: useLightSet ? Colours.palette.m3secondaryContainer : Colours.palette.m3secondary
     readonly property color safeTertiary: useLightSet ? Colours.palette.m3tertiaryContainer : Colours.palette.m3tertiary
 
+    // Interaction config
+    readonly property bool hoverEnabled: Config.background.desktopClock.hoverEnabled
+    readonly property real hoverScale: Config.background.desktopClock.hoverScale
+    readonly property string clickAction: Config.background.desktopClock.clickAction
+
+    function getPageIndex(pageName: string): int {
+        // Indices come from PageCompRegistry, never a local copy — a duplicated map here
+        // silently drifted two entries behind the registry and sent clicks to the wrong page
+        return PageCompRegistry.topLevelPages[pageName] ?? -1;
+    }
+
     implicitWidth: layout.implicitWidth + (Tokens.padding.large * 4 * root.clockScale)
     implicitHeight: layout.implicitHeight + (Tokens.padding.extraLargeIncreased * root.clockScale)
+
+    // Hover state
+    property bool isHovered: false
+    property real currentScale: isHovered && hoverEnabled ? hoverScale : 1.0
 
     Item {
         id: clockContainer
 
         anchors.fill: parent
+        scale: root.currentScale
 
         layer.enabled: Config.background.desktopClock.shadow.enabled
         layer.effect: MultiEffect {
@@ -147,13 +164,43 @@ Item {
                 }
             }
         }
+
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: root.hoverEnabled
+
+            onEntered: root.isHovered = true
+            onExited: root.isHovered = false
+            onClicked: {
+                if (root.clickAction === "nexus") {
+                    WindowFactory.create();
+                } else if (root.clickAction.startsWith("nexus/")) {
+                    const pageName = root.clickAction.split("/")[1];
+                    const idx = root.getPageIndex(pageName);
+                    if (idx >= 0)
+                        WindowFactory.create(undefined, {}, idx);
+                }
+            }
+        }
     }
 
     Behavior on clockScale {
         Anim {}
     }
 
+    Behavior on currentScale {
+        Anim {
+            type: Anim.FastSpatial
+        }
+    }
+
     Behavior on implicitWidth {
+        Anim {
+            type: Anim.StandardSmall
+        }
+    }
+
+    Behavior on implicitHeight {
         Anim {
             type: Anim.StandardSmall
         }

@@ -1,34 +1,15 @@
-pragma ComponentBehavior: Bound
-
 import QtQuick.Layouts
 import Caelestia.Config
+import qs.modules.nexus
 import qs.modules.nexus.common
 
 PageBase {
     id: root
 
-    function isToggleOn(id: string): bool {
-        const item = Config.utilities.quickToggles.values.find(t => t.id === id);
-        return item?.enabled ?? false;
-    }
-
-    function setToggleOn(id: string, on: bool): void {
-        const list = GlobalConfig.utilities.quickToggles;
-        for (let i = 0; i < list.count; i++) {
-            const item = list.at(i);
-            if (item.id === id) {
-                item.enabled = on;
-                return;
-            }
-        }
-        list.insert({
-            id,
-            enabled: on
-        });
-    }
-
     title: qsTr("Utilities")
     isSubPage: true
+
+    readonly property int enabledToggles: Config.utilities.quickToggles.filter(t => t.enabled ?? true).length
 
     ColumnLayout {
         anchors.horizontalCenter: parent.horizontalCenter
@@ -36,110 +17,58 @@ PageBase {
         width: root.cappedWidth
         spacing: Tokens.spacing.extraSmall / 2
 
-        // General
         SectionHeader {
             first: true
             text: qsTr("General")
         }
 
         ToggleRow {
+            Layout.fillWidth: true
             first: true
-            last: true
             text: qsTr("Enabled")
-            subtext: qsTr("Show the utilities panel")
+            subtext: qsTr("The drawer holding recording, idle inhibit and quick toggles")
             checked: Config.utilities.enabled
             onToggled: GlobalConfig.utilities.enabled = checked
         }
 
-        // Cards
-        SectionHeader {
-            text: qsTr("Cards")
-        }
-
-        ToggleRow {
-            first: true
-            text: qsTr("Keep awake")
-            subtext: qsTr("Show the idle inhibitor card")
-            checked: Config.utilities.cards.keepAwake
-            onToggled: GlobalConfig.utilities.cards.keepAwake = checked
-        }
-
-        ToggleRow {
-            text: qsTr("Screen recorder")
-            subtext: qsTr("Show the screen recorder card")
-            checked: Config.utilities.cards.recorder
-            onToggled: GlobalConfig.utilities.cards.recorder = checked
-        }
-
-        ToggleRow {
+        StepperRow {
+            Layout.fillWidth: true
             last: true
-            text: qsTr("Quick toggles")
-            subtext: qsTr("Show the quick toggles card")
-            checked: Config.utilities.cards.quickToggles
-            onToggled: GlobalConfig.utilities.cards.quickToggles = checked
+            label: qsTr("Max toasts")
+            subtext: qsTr("How many toasts stack up before the oldest is dropped")
+            value: Config.utilities.maxToasts
+            from: 1
+            to: 10
+            stepSize: 1
+            onMoved: v => GlobalConfig.utilities.maxToasts = v
         }
 
-        // Quick toggles
         SectionHeader {
             text: qsTr("Quick toggles")
         }
 
-        ToggleRow {
+        NavRow {
+            Layout.fillWidth: true
             first: true
-            text: qsTr("Wi-Fi")
-            subtext: qsTr("Toggle wireless networking")
-            disabled: !Config.utilities.cards.quickToggles
-            checked: root.isToggleOn("wifi")
-            onToggled: root.setToggleOn("wifi", checked)
-        }
-
-        ToggleRow {
-            text: qsTr("Bluetooth")
-            subtext: qsTr("Toggle the Bluetooth adapter")
-            disabled: !Config.utilities.cards.quickToggles
-            checked: root.isToggleOn("bluetooth")
-            onToggled: root.setToggleOn("bluetooth", checked)
-        }
-
-        ToggleRow {
-            text: qsTr("Microphone")
-            subtext: qsTr("Mute or unmute the default source")
-            disabled: !Config.utilities.cards.quickToggles
-            checked: root.isToggleOn("mic")
-            onToggled: root.setToggleOn("mic", checked)
-        }
-
-        ToggleRow {
-            text: qsTr("Settings")
-            subtext: qsTr("Open the settings window")
-            disabled: !Config.utilities.cards.quickToggles
-            checked: root.isToggleOn("settings")
-            onToggled: root.setToggleOn("settings", checked)
-        }
-
-        ToggleRow {
-            text: qsTr("Game mode")
-            subtext: qsTr("Toggle game mode")
-            disabled: !Config.utilities.cards.quickToggles
-            checked: root.isToggleOn("gameMode")
-            onToggled: root.setToggleOn("gameMode", checked)
-        }
-
-        ToggleRow {
-            text: qsTr("Do not disturb")
-            subtext: qsTr("Silence notifications")
-            disabled: !Config.utilities.cards.quickToggles
-            checked: root.isToggleOn("dnd")
-            onToggled: root.setToggleOn("dnd", checked)
-        }
-
-        ToggleRow {
             last: true
-            text: qsTr("VPN")
-            subtext: qsTr("Connect or disconnect the VPN")
-            disabled: !Config.utilities.cards.quickToggles
-            checked: root.isToggleOn("vpn")
-            onToggled: root.setToggleOn("vpn", checked)
+            icon: "toggle_on"
+            label: qsTr("Quick toggles")
+            status: qsTr("%1 of %2 shown").arg(root.enabledToggles).arg(Config.utilities.quickToggles.length)
+            onClicked: root.nState.openSubPage(PageCompRegistry.panelsSubPages.quickToggles)
+        }
+
+        SectionHeader {
+            text: qsTr("Sounds")
+        }
+
+        NavRow {
+            Layout.fillWidth: true
+            first: true
+            last: true
+            icon: "volume_up"
+            label: qsTr("Sounds")
+            status: Config.utilities.sounds.enabled ? qsTr("On") : qsTr("Off")
+            onClicked: root.nState.openSubPage(PageCompRegistry.panelsSubPages.sounds)
         }
     }
 }

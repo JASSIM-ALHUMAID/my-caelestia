@@ -6,6 +6,7 @@ import Quickshell
 import Quickshell.Io
 import Caelestia.Config
 import qs.components.misc
+import qs.services
 
 Singleton {
     id: root
@@ -208,13 +209,21 @@ Singleton {
             }
 
             brightness = value;
+            Sounds.playThrottled(GlobalConfig.utilities.sounds.brightnessChange);
 
-            if (isAppleDisplay)
-                Quickshell.execDetached(["asdbctl", "set", rounded]);
-            else if (isDdc)
-                Quickshell.execDetached(["ddcutil", "-b", busNum, "setvcp", "10", rounded]);
-            else
-                Quickshell.execDetached(["brightnessctl", "s", `${rounded}%`]);
+            // Optimistic on purpose -- the slider has to track the drag. The onExit below is
+            // what keeps the optimism honest: without it a failed backend left `brightness`
+            // reporting a level the panel was never set to, with nothing to correct it.
+            const argv = isAppleDisplay ? ["asdbctl", "set", `${rounded}`] : isDdc ? ["ddcutil", "-b", busNum, "setvcp", "10", `${rounded}`] : ["brightnessctl", "s", `${rounded}%`];
+
+            Cmd.run(argv, {
+                title: qsTr("Couldn't change brightness"),
+                icon: "brightness_alert",
+                onExit: exitCode => {
+                    if (exitCode !== 0)
+                        initBrightness();
+                }
+            });
 
             if (isDdc)
                 timer.restart();

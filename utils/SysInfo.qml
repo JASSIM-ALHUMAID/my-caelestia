@@ -13,7 +13,11 @@ Singleton {
     property string osPrettyName
     property string osId
     property list<string> osIdLike
-    property string osLogo: Qt.resolvedUrl(`${Quickshell.shellDir}/assets/logo.svg`)
+    readonly property url caelestiaLogo: Qt.resolvedUrl(`${Quickshell.shellDir}/assets/logo.svg`)
+    property string osLogo: caelestiaLogo
+    // Always the real distro/custom logo, regardless of the caelestia override, so a
+    // per-entry "os" logo can be shown even when the global default is caelestia.
+    property string distroLogo: caelestiaLogo
     property bool isDefaultLogo: true
 
     property string uptime
@@ -58,14 +62,23 @@ Singleton {
             root.osIdLike = fd("ID_LIKE").split(" ");
 
             const logo = Quickshell.iconPath(fd("LOGO"), true);
+
+            // Resolve the real distro/custom logo independently of the caelestia override.
+            if (GlobalConfig.general.logo && GlobalConfig.general.logo !== "caelestia")
+                root.distroLogo = Quickshell.iconPath(GlobalConfig.general.logo, true) || "file://" + Paths.absolutePath(GlobalConfig.general.logo);
+            else if (logo)
+                root.distroLogo = logo;
+            else
+                root.distroLogo = root.caelestiaLogo;
+
             if (GlobalConfig.general.logo === "caelestia") {
-                root.osLogo = Qt.resolvedUrl(`${Quickshell.shellDir}/assets/logo.svg`);
+                root.osLogo = root.caelestiaLogo;
                 root.isDefaultLogo = true;
             } else if (GlobalConfig.general.logo) {
-                root.osLogo = Quickshell.iconPath(GlobalConfig.general.logo, true) || "file://" + Paths.absolutePath(GlobalConfig.general.logo);
+                root.osLogo = root.distroLogo;
                 root.isDefaultLogo = false;
             } else if (logo) {
-                root.osLogo = logo;
+                root.osLogo = root.distroLogo;
                 root.isDefaultLogo = false;
             }
         }
