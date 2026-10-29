@@ -74,7 +74,8 @@ var CATEGORIES = [
             { desc: "Play video wallpaper", modifiers: ["CTRL", "SHIFT", "ALT"], key: "slash", actionId: "exec", argument: "~/.config/caelestia/myScripts/videoWallpepr.fish" },
             { desc: "Stop video wallpaper", modifiers: ["CTRL", "ALT"], key: "slash", actionId: "exec", argument: "pkill mpvpaper" },
             { desc: "Seek video wallpaper forward", modifiers: ["SUPER", "ALT"], key: "Right", actionId: "exec", argument: "caelestia shell wallpaper seekForward" },
-            { desc: "Seek video wallpaper backward", modifiers: ["SUPER", "ALT"], key: "Left", actionId: "exec", argument: "caelestia shell wallpaper seekBackward" }
+            { desc: "Seek video wallpaper backward", modifiers: ["SUPER", "ALT"], key: "Left", actionId: "exec", argument: "caelestia shell wallpaper seekBackward" },
+            { desc: "Toggle video wallpaper audio", modifiers: ["SUPER", "ALT"], key: "M", actionId: "exec", argument: "caelestia shell wallpaper toggleAudio" }
         ]
     },
     {

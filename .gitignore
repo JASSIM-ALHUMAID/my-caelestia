@@ -6,6 +6,7 @@ build/
 logs
 /AGENTS.md
 docs/
+local/
 caelestia-configs/monitors/HEADLESS-*/
 caelestia-configs/monitors/WAYLAND-*/
 

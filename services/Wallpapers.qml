@@ -185,6 +185,12 @@ fi`
         seekRequested(target);
     }
 
+    // Flips the same persisted setting as the Nexus toggle, so the keybind, the
+    // settings page and `shell.json` never disagree about whether audio is on.
+    function toggleAudio(): void {
+        GlobalConfig.background.videoAudio = !GlobalConfig.background.videoAudio;
+    }
+
     function _findArgs(dir: string, filter: int): list<string> {
         const exts = filter === 2 ? Images.validVideoExtensions : filter === 1 ? Images.validImageExtensions : Images.validImageExtensions.concat(Images.validVideoExtensions);
         const nameArgs = [];
@@ -482,6 +488,10 @@ ${applyCommand('"$2"')} && printf %s "$1" > "$3"`, "sh", path, videoFramePath(pa
 
         function seekBackward(): void {
             root.seekVideo(-Config.background.videoSeekStepSeconds);
+        }
+
+        function toggleAudio(): void {
+            root.toggleAudio();
         }
 
         target: "wallpaper"
