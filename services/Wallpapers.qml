@@ -9,6 +9,7 @@ import Caelestia.Config
 import Caelestia.Models
 import qs.services
 import qs.utils
+import "../utils/scripts/wallpaper-selection.js" as Selection
 
 Searcher {
     id: root
@@ -58,6 +59,7 @@ fi`
     property var frameQueue: []
     property bool _programmaticPending: false
     property bool pendingVideoAdvance: false
+    property var _selectionCache: null
 
     signal wallpaperApplied(string oldPath, string newPath)
     signal seekRequested(int targetMs)
@@ -75,50 +77,23 @@ fi`
     // owns it. Files directly in a wallpaper dir land in `roots`; everything else becomes one
     // folder keyed by the full relative path, so `imgs/Wallpapers` stays distinct from
     // `imgs/Videos` and directories holding no wallpapers never appear at all.
+    // Only the Nexus picker reads this, so keep it lazy: building it eagerly made the
+    // singleton pay the cost on every entries change even while the page was closed.
+    property bool groupsNeeded: false
     readonly property var groups: {
-        const roots = [];
-        const folders = {};
-
-        for (const w of allEntries) {
-            let rel = null;
-            for (const absDir of effectiveAbsDirs) {
-                if (w.path.startsWith(absDir + "/")) {
-                    rel = w.parentDir.length > absDir.length ? w.parentDir.slice(absDir.length + 1) : "";
-                    break;
-                }
-            }
-            if (rel === null)
-                continue;
-            if (rel === "") {
-                roots.push(w);
-            } else {
-                if (!folders[rel])
-                    folders[rel] = [];
-                folders[rel].push(w);
-            }
-        }
-
-        const byName = (a, b) => a.name.localeCompare(b.name);
-        roots.sort(byName);
-        return {
-            roots,
-            folders: Object.keys(folders).sort((a, b) => a.localeCompare(b)).map(title => ({
-                title,
-                entries: folders[title].sort(byName)
-            }))
-        };
+        if (!groupsNeeded)
+            return {
+                roots: [],
+                folders: []
+            };
+        return Selection.buildGroups(allEntries, effectiveAbsDirs);
     }
 
     // FileSystemModel follows symlinks but reports the link path, while the wallpaper state
     // file records the canonical one, so a wallpaper reached through a symlinked directory
     // never compares equal by string. Canonicalising the handful of distinct parent dirs is
     // enough to bridge the two namespaces.
-    readonly property list<string> entryDirs: {
-        const seen = {};
-        for (const w of allEntries)
-            seen[w.parentDir] = true;
-        return Object.keys(seen).sort();
-    }
+    readonly property list<string> entryDirs: Selection.parentDirs(allEntries)
     property var canonicalDirs: ({})
     // The entryDirs snapshot the in-flight realpath run was started for, so its output lines
     // pair with the right directories even if entryDirs changes again mid-run.
@@ -135,6 +110,45 @@ fi`
         return !!real && `${real}/${entry.name}` === actualCurrent;
     }
 
+    function _selection(): var {
+        if (_selectionCache === null)
+            _selectionCache = {
+                pools: Object.create(null),
+                nextOrders: Object.create(null)
+            };
+        return _selectionCache;
+    }
+
+    // Pools and next orders are rebuilt only when allEntries changes, not on every
+    // rotation. The index maps make both selection paths O(1) after the first use.
+    function _poolEntries(pool: string): var {
+        const cache = _selection();
+        let cached = cache.pools[pool];
+        if (!cached) {
+            const entries = Selection.filterPool(allEntries, pool, path => Images.isValidVideoByName(path));
+            cached = {
+                entries,
+                indexByPath: Selection.indexByPath(entries)
+            };
+            cache.pools[pool] = cached;
+        }
+        return cached;
+    }
+
+    function _nextOrder(pool: string): var {
+        const cache = _selection();
+        let cached = cache.nextOrders[pool];
+        if (!cached) {
+            const entries = Selection.buildNextOrder(_poolEntries(pool).entries);
+            cached = {
+                entries,
+                indexByPath: Selection.indexByPath(entries)
+            };
+            cache.nextOrders[pool] = cached;
+        }
+        return cached;
+    }
+
     function setRandom(): void {
         const entries = allEntries;
         if (entries.length === 0)
@@ -145,35 +159,15 @@ fi`
 
     function advance(filterOverride = -1): bool {
         const pool = filterOverride === 0 ? "all" : filterOverride === 1 ? "images" : filterOverride === 2 ? "videos" : Config.background.advancePool;
-        const candidates = allEntries.filter(w => {
-            const isVideo = Images.isValidVideoByName(w.path);
-            if (pool === "images")
-                return !isVideo;
-            if (pool === "videos")
-                return isVideo;
-            return true;
-        });
-        if (candidates.length === 0)
-            return false;
-
+        let pick;
         if (Config.background.advanceOrder === "next") {
-            const sorted = candidates.slice().sort((a, b) => a.path.localeCompare(b.path));
-            const idx = sorted.findIndex(w => w.path === actualCurrent);
-            const pick = idx === -1 ? sorted[0] : sorted[(idx + 1) % sorted.length];
-            if (pick.path === actualCurrent)
-                return false;
-            setWallpaper(pick.path);
-            return true;
+            const order = _nextOrder(pool);
+            pick = Selection.pickNext(order.entries, order.indexByPath, actualCurrent);
+        } else {
+            const candidates = _poolEntries(pool);
+            pick = Selection.pickRandom(candidates.entries, candidates.indexByPath, actualCurrent);
         }
-
-        let choices = candidates;
-        if (candidates.length > 1) {
-            const withoutCurrent = candidates.filter(w => w.path !== actualCurrent);
-            if (withoutCurrent.length > 0)
-                choices = withoutCurrent;
-        }
-        const pick = choices[Math.floor(Math.random() * choices.length)];
-        if (pick.path === actualCurrent)
+        if (!pick || pick.path === actualCurrent)
             return false;
         setWallpaper(pick.path);
         return true;
@@ -394,6 +388,8 @@ ${applyCommand('"$2"')} && printf %s "$1" > "$3"`, "sh", path, videoFramePath(pa
     }
 
     onEntryDirsChanged: realpathDebounce.restart()
+
+    onAllEntriesChanged: _selectionCache = null
 
     MediaDevices {
         id: mediaDevices

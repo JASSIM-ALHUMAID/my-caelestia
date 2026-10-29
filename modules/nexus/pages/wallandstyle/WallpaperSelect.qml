@@ -49,6 +49,11 @@ PageBase {
     title: qsTr("Wallpapers")
     isSubPage: true
 
+    // `groups` is expensive to rebuild for large libraries, so keep it off until
+    // this page is actually open.
+    Component.onCompleted: Wallpapers.groupsNeeded = true
+    Component.onDestruction: Wallpapers.groupsNeeded = false
+
     ColumnLayout {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
@@ -319,7 +324,7 @@ PageBase {
             Layout.fillWidth: true
 
             asynchronous: true
-            active: Wallpapers.groups.roots.length === 0 && Wallpapers.groups.folders.length === 0
+            active: Wallpapers.groupsNeeded && Wallpapers.groups.roots.length === 0 && Wallpapers.groups.folders.length === 0
             visible: active
 
             sourceComponent: StyledRect {
